@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  albums    Album[]
+  media     Media[]
+  persons   Person[]
+  createdAt DateTime @default(now())
+}
+
+model Album {
+  id           String   @id @default(uuid())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  title        String
+  description  String?
+  coverPhoto   Media?   @relation("AlbumCover", fields: [coverPhotoId], references: [id])
+  coverPhotoId String?  @unique
+  media        Media[]
+  createdAt    DateTime @default(now())
+}
+
+
+model Media {
+  id                String            @id @default(uuid())
+  album             Album?            @relation(fields: [albumId], references: [id])
+  albumId           String?
+  user              User              @relation(fields: [userId], references: [id])
+  userId            String
+  type              MediaType
+  url               String
+  thumbnailUrl      String?
+  takenAt           DateTime?
+  recognitionStatus RecognitionStatus @default(PENDING)
+  recognizedFaces   RecognizedFace[]
+  createdAt         DateTime          @default(now())
+
+  // Inverse relation for Album.coverPhoto
+  albumCoverOf Album? @relation("AlbumCover")
+
+  @@index([userId])
+}
+
+model Person {
+  id         String           @id @default(uuid())
+  user       User             @relation(fields: [userId], references: [id])
+  userId     String
+  name       String?
+  folderPath String // where you keep the person's images
+  faces      RecognizedFace[]
+  createdAt  DateTime         @default(now())
+}
+
+model RecognizedFace {
+  id          String   @id @default(uuid())
+  media       Media    @relation(fields: [mediaId], references: [id])
+  mediaId     String
+  person      Person   @relation(fields: [personId], references: [id])
+  personId    String
+  encoding    String? // face embedding vector (optional)
+  boundingBox Json // { x, y, width, height }
+  createdAt   DateTime @default(now())
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+enum RecognitionStatus {
+  PENDING
+  DONE
+  FAILED
+}
