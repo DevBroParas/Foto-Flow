@@ -19,7 +19,8 @@ export const protect = async (
     const token = req.cookies.token;
 
     if (!token) {
-       res.status(401).json({ message: "No token provided" });
+      res.status(401).json({ message: "No token provided" });
+      return;
     }
 
     if (!process.env.JWT_SECRET) {
@@ -31,13 +32,15 @@ export const protect = async (
     const user = await Prisma.user.findUnique({ where: { id: decoded.id } });
 
     if (!user) {
-         res.status(401).json({ message: "User not found" });
+      res.status(401).json({ message: "User not found" });
+      return;
     }
 
-    (req as any).user = user;
+    req.user = user;
 
     next();
   } catch (err) {
     res.status(401).json({ message: "Unauthorized" });
+    return;
   }
 };
