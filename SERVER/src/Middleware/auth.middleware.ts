@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
+import { AuthenticatedRequest } from "../Types";
 
 const Prisma = new PrismaClient();
 
@@ -11,7 +12,7 @@ interface JwtPayload {
 }
 
 export const protect = async (
-  req: Request & { user?: any },
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {

@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { PrismaClient, User } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { AuthenticatedRequest } from "../Types";
 
 const Prisma = new PrismaClient();
 
@@ -16,7 +17,7 @@ interface LoginBody {
   password: string;
 }
 
-
+// Register a new user
 export const register = async (
   req: Request<{}, {}, RegisterBody>,
   res: Response
@@ -69,6 +70,7 @@ export const register = async (
   }
 };
 
+// Login an existing user
 export const login = async (
   req: Request<{}, {}, LoginBody>,
   res: Response
@@ -121,6 +123,7 @@ export const login = async (
   }
 };
 
+// Logout user
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     res.cookie("token", "", {
@@ -136,9 +139,13 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const profile = async (req: Request, res: Response): Promise<void> => {
+// Get user profile
+export const profile = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
-    const user = (req as any).user as User;
+    const user = req.user;
 
     if (!user) {
       res.status(401).json({ message: "Unauthorized" });
