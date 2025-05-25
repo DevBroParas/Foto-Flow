@@ -5,6 +5,7 @@ import {
   deleteMedia,
   getMediaById,
   downloadMediaFile,
+  deleteAllMedia,
 } from "../Controller/media.controller";
 import { protect } from "../Middleware/auth.middleware";
 import { upload } from "../Middleware/upload.middleware";
@@ -16,6 +17,9 @@ router.post("/upload", protect, upload.single("file"), uploadMedia);
 
 // Route to get all media for the logged-in user
 router.get("/", protect, getMedia);
+
+// Route to delete all media for the logged-in user
+router.delete("/delete-all", protect, deleteAllMedia);
 
 // Route to get media by ID
 router.get("/:id", protect, getMediaById);

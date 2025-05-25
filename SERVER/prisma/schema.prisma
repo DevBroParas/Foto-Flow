@@ -30,7 +30,6 @@ model Album {
   createdAt    DateTime @default(now())
 }
 
-
 model Media {
   id                String            @id @default(uuid())
   album             Album?            @relation(fields: [albumId], references: [id])
@@ -62,14 +61,16 @@ model Person {
 }
 
 model RecognizedFace {
-  id          String   @id @default(uuid())
-  media       Media    @relation(fields: [mediaId], references: [id])
-  mediaId     String
-  person      Person   @relation(fields: [personId], references: [id])
-  personId    String
-  encoding    String? // face embedding vector (optional)
-  boundingBox Json // { x, y, width, height }
-  createdAt   DateTime @default(now())
+  id               String   @id @default(uuid())
+  media            Media    @relation(fields: [mediaId], references: [id])
+  mediaId          String
+  person           Person   @relation(fields: [personId], references: [id])
+  personId         String
+  encoding         String?
+  boundingBox      Json
+  createdAt        DateTime @default(now())
+  isPotentialMatch Boolean  @default(false)
+  isConfirmed      Boolean?
 }
 
 enum MediaType {

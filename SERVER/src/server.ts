@@ -23,9 +23,15 @@ app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 import userRoute from "./Routes/user.route";
 import albumRoute from "./Routes/album.route";
 import mediaRoute from "./Routes/media.route";
+import recognizeRoute from "./Routes/recognize.route";
+import personRoute from "./Routes/person.route";
+import faceRoute from "./Routes/face.route";
 app.use("/user", userRoute);
 app.use("/album", albumRoute);
 app.use("/media", mediaRoute);
+app.use("/recognize", recognizeRoute);
+app.use("/person", personRoute);
+app.use("/face", faceRoute);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);

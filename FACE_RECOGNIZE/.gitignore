@@ -1,0 +1,18 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# VS Code settings (optional if you use VS Code)
+.vscode/
+
+# Mac system files
+.DS_Store
+
+# Logs
+*.log
+
+# Face recognition storage file (optional if using face_store.json)
+face_store.json

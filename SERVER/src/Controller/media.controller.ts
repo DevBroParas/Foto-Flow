@@ -3,6 +3,7 @@ import { PrismaClient, MediaType } from "@prisma/client";
 import { AuthenticatedRequest } from "../Types";
 import path from "path";
 import fs from "fs";
+import { triggerRecognitionInternal } from "./recognize.controller";
 
 const Prisma = new PrismaClient();
 
@@ -17,6 +18,12 @@ export const uploadMedia = async (
     if (!file || !userId) {
       res.status(400).json({ message: "Missing file or user." });
       return;
+    }
+
+    // ✅ Ensure uploads directory exists
+    const uploadDir = path.join(__dirname, "..", "uploads");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
 
     const { albumId, takenAt } = req.body;
@@ -35,6 +42,14 @@ export const uploadMedia = async (
         takenAt: takenAt ? new Date(takenAt) : undefined,
       },
     });
+
+    if (mediaType === "PHOTO") {
+      triggerRecognitionInternal(newMedia.id)
+        .then(() =>
+          console.log(`Recognition triggered for media ${newMedia.id}`)
+        )
+        .catch((err) => console.error("Recognition failed:", err));
+    }
 
     res.status(201).json({ media: newMedia });
   } catch (err) {
@@ -184,3 +199,45 @@ export const deleteMedia = async (
     res.status(500).json({ message: "Failed to delete media" });
   }
 };
+
+export const deleteAllMedia = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(400).json({ message: "User not authenticated." });
+      return;
+    }
+
+    // Delete related recognized faces
+    const mediaList = await Prisma.media.findMany({
+      where: { userId },
+      select: { id: true },
+    });
+    const mediaIds = mediaList.map((m) => m.id);
+    await Prisma.recognizedFace.deleteMany({ where: { mediaId: { in: mediaIds } } });
+
+    // Delete media from DB
+    await Prisma.media.deleteMany({ where: { userId } });
+
+    // Delete all files inside uploads folder but keep folder
+    const uploadsDir = path.join(__dirname, "..", "uploads");
+    if (fs.existsSync(uploadsDir)) {
+      fs.readdirSync(uploadsDir).forEach((file) => {
+        try {
+          fs.unlinkSync(path.join(uploadsDir, file));
+        } catch (e) {
+          console.warn(`File not found or could not delete: ${file}`);
+        }
+      });
+    }
+
+    res.status(200).json({ message: "All media deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete all media" });
+  }
+};
+
