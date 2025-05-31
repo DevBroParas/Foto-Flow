@@ -3,7 +3,7 @@ import { PrismaClient, MediaType } from "@prisma/client";
 import { AuthenticatedRequest } from "../Types";
 import path from "path";
 import fs from "fs";
-import { triggerRecognitionInternal } from "./recognize.controller";
+import axios from "axios";
 
 const Prisma = new PrismaClient();
 
@@ -44,7 +44,12 @@ export const uploadMedia = async (
     });
 
     if (mediaType === "PHOTO") {
-      triggerRecognitionInternal(newMedia.id)
+      await axios
+        .post(process.env.FACE_API_KEY!, {
+          media_id: newMedia.id,
+          filename: file.filename,
+        })
+
         .then(() =>
           console.log(`Recognition triggered for media ${newMedia.id}`)
         )
@@ -217,7 +222,9 @@ export const deleteAllMedia = async (
       select: { id: true },
     });
     const mediaIds = mediaList.map((m) => m.id);
-    await Prisma.recognizedFace.deleteMany({ where: { mediaId: { in: mediaIds } } });
+    await Prisma.recognizedFace.deleteMany({
+      where: { mediaId: { in: mediaIds } },
+    });
 
     // Delete media from DB
     await Prisma.media.deleteMany({ where: { userId } });
@@ -240,4 +247,3 @@ export const deleteAllMedia = async (
     res.status(500).json({ message: "Failed to delete all media" });
   }
 };
-

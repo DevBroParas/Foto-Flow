@@ -4,100 +4,79 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export const triggerRecognition = async (
+
+
+export const getRecognitionStatus = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { mediaId } = req.params;
-  // Lookup media
-  const media = await prisma.media.findUnique({ where: { id: mediaId } });
-  if (!media) {
-    res.status(404).json({ message: "Media not found" });
-    return;
-  }
-
-  if (!process.env.FACE_API_KEY) {
-    throw new Error("FACE_API_KEY environment variable is not set");
-  }
-
   try {
-    const resp = await axios.post(process.env.FACE_API_KEY, {
-      media_id: media.id,
-      filename: media.url.split("/").pop(),
-    });
-    const { matches, newPersons } = resp.data;
+    const { mediaId, matches, newPersons } = req.body;
 
-    // Create Person entries for newPersons
-    for (const pid of newPersons) {
-      await prisma.person.create({
-        data: { id: pid, userId: media.userId, folderPath: pid },
-      });
+    if (!mediaId || !Array.isArray(matches) || !Array.isArray(newPersons)) {
+      res.status(400).json({ message: "Invalid request body" });
+      return;
     }
 
-    // Create RecognizedFace records and update media status
+    const media = await prisma.media.findUnique({ where: { id: mediaId } });
+    if (!media) {
+      res.status(404).json({ message: "Media not found" });
+      return;
+    }
+
+    // 1. Save new persons
+    for (const personId of newPersons) {
+      // Avoid duplicates if same personId already exists
+      const existing = await prisma.person.findUnique({ where: { id: personId } });
+      if (!existing) {
+        await prisma.person.create({
+          data: {
+            id: personId,
+            userId: media.userId,
+            folderPath: `/persons/${personId}`,
+            name: "Unknown",
+          },
+        });
+      }
+    }
+
+    // 2. Save recognized faces
     for (const match of matches) {
+      const { personId, boundingBox, encoding} = match;
+
       await prisma.recognizedFace.create({
         data: {
           mediaId: media.id,
-          personId: match.personId,
-          encoding: undefined,
-          boundingBox: match.boundingBox,
+          personId,
+          boundingBox,
+          encoding: encoding || null,
+          similarity: match.similarity || 1, // Default to 1 if not provided
+          isPotentialMatch: true,
         },
       });
     }
 
+    // 3. Update media recognition status
     await prisma.media.update({
       where: { id: media.id },
       data: { recognitionStatus: "DONE" },
     });
 
-    res.json({ message: "Recognition complete", matches });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Recognition service error" });
-  }
-};
-
-export const triggerRecognitionInternal = async (
-  mediaId: string
-): Promise<void> => {
-  const media = await prisma.media.findUnique({ where: { id: mediaId } });
-  if (!media) throw new Error("Media not found");
-
-  if (!process.env.FACE_API_KEY) {
-    throw new Error("FACE_API_KEY environment variable is not set");
-  }
-
-  const resp = await axios.post(process.env.FACE_API_KEY, {
-    media_id: media.id,
-    filename: media.url.split("/").pop(),
-  });
-
-  const { matches, newPersons } = resp.data;
-
-  for (const pid of newPersons) {
-    await prisma.person.create({
-      data: { id: pid, userId: media.userId, folderPath: pid },
-    });
-  }
-
-for (const match of matches) {
-  await prisma.recognizedFace.create({
-    data: {
+    console.log("Recognition results saved successfully:", {
       mediaId: media.id,
-      personId: match.personId,
-      encoding: undefined,
-      boundingBox: match.boundingBox,
-      isPotentialMatch: match.isPotentialMatch,
-      isConfirmed: match.isPotentialMatch ? null : true, // If not potential, auto-confirm
-    },
-  });
-}
+      matches: matches.length,
+      newPersons: newPersons.length,
+    });
+
+    res.status(200).json({
+      message: "Recognition results saved successfully",
+      savedMatches: matches.length,
+      newPersons: newPersons.length,
+    });
 
 
-  await prisma.media.update({
-    where: { id: media.id },
-    data: { recognitionStatus: "DONE" },
-  });
+  } catch (error) {
+    console.error("Error processing recognition status:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };
-

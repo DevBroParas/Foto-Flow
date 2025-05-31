@@ -71,6 +71,7 @@ model RecognizedFace {
   createdAt        DateTime @default(now())
   isPotentialMatch Boolean  @default(false)
   isConfirmed      Boolean?
+  similarity       Float 
 }
 
 enum MediaType {

@@ -14,5 +14,4 @@ __pycache__/
 # Logs
 *.log
 
-# Face recognition storage file (optional if using face_store.json)
-face_store.json
+.env
