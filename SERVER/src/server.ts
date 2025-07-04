@@ -10,15 +10,16 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "http://localhost:5173",
     credentials: true,
   })
 );
 app.use(cookieParser());
 
 // get all the static files from the uploads directory
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+// app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Import routes
 import userRoute from "./Routes/user.route";
 import albumRoute from "./Routes/album.route";

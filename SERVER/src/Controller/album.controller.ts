@@ -16,7 +16,7 @@ export const createAlbum = async (
       return;
     }
 
-    const { title, description, coverPhotoId } = req.body;
+    const { title, description, coverPhotoId, mediaIds } = req.body;
 
     if (!title) {
       res.status(400).json({ message: "Title is required" });
@@ -29,6 +29,12 @@ export const createAlbum = async (
         description,
         userId: user.id,
         coverPhotoId,
+        media:
+          mediaIds && Array.isArray(mediaIds)
+            ? {
+                connect: mediaIds.map((id: string) => ({ id })),
+              }
+            : undefined,
       },
       include: {
         coverPhoto: true,

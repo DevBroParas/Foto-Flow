@@ -42,19 +42,19 @@ export const uploadMedia = async (
         takenAt: takenAt ? new Date(takenAt) : undefined,
       },
     });
-
-    if (mediaType === "PHOTO") {
-      await axios
-        .post(process.env.FACE_API_KEY!, {
-          media_id: newMedia.id,
-          filename: file.filename,
-        })
-
-        .then(() =>
-          console.log(`Recognition triggered for media ${newMedia.id}`)
-        )
-        .catch((err) => console.error("Recognition failed:", err));
-    }
+    // Send request to Face Recognisation API
+    // if (mediaType === "PHOTO") {
+    //   await axios
+    //     .post(process.env.FACE_API_KEY!, {
+    //       media_id: newMedia.id,
+    //       filename: file.filename,
+    //     })
+    //
+    //     .then(() =>
+    //       console.log(`Recognition triggered for media ${newMedia.id}`)
+    //     )
+    //     .catch((err) => console.error("Recognition failed:", err));
+    // }
 
     res.status(201).json({ media: newMedia });
   } catch (err) {
@@ -154,6 +154,63 @@ export const downloadMediaFile = async (
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to download media" });
+  }
+};
+
+export const deleteSelectedMedia = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { mediaIds } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ message: "User not authenticated." });
+      return;
+    }
+
+    if (!Array.isArray(mediaIds) || mediaIds.length === 0) {
+      res.status(400).json({ message: "No media IDs provided." });
+      return;
+    }
+
+    // Step 1: Get all media to be deleted
+    const mediaItems = await Prisma.media.findMany({
+      where: {
+        id: { in: mediaIds },
+        userId,
+      },
+    });
+
+    // Step 2: Delete files from disk
+    mediaItems.forEach((media) => {
+      const filePath = path.join(
+        __dirname,
+        "..",
+        "uploads",
+        path.basename(media.url)
+      );
+
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error(`Failed to delete file for media ${media.id}:`, err);
+        }
+      });
+    });
+
+    // Step 3: Delete from DB
+    await Prisma.media.deleteMany({
+      where: {
+        id: { in: mediaIds },
+        userId,
+      },
+    });
+
+    res.status(200).json({ message: "Selected media deleted successfully." });
+  } catch (err) {
+    console.error("Error deleting selected media:", err);
+    res.status(500).json({ message: "Failed to delete selected media." });
   }
 };
 
