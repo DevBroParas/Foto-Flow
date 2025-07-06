@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { getAllMedia } from "../../service/MediaService";
+import { getAllMedia, moveManyToBinApi } from "../../service/MediaService";
+import { Trash2, X, ArrowLeft, ArrowRight } from "lucide-react";
 
 type Media = {
   id: string | null;
@@ -24,7 +25,6 @@ const MediaPage = () => {
     {}
   );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
@@ -58,10 +58,7 @@ const MediaPage = () => {
   ) => {
     const img = e.currentTarget;
     const isLandscape = img.naturalWidth > img.naturalHeight;
-    setLandscapeItems((prev) => ({
-      ...prev,
-      [id || img.src]: isLandscape,
-    }));
+    setLandscapeItems((prev) => ({ ...prev, [id || img.src]: isLandscape }));
   };
 
   const handleVideoMetadata = (
@@ -70,10 +67,7 @@ const MediaPage = () => {
   ) => {
     const video = e.currentTarget;
     const isLandscape = video.videoWidth > video.videoHeight;
-    setLandscapeItems((prev) => ({
-      ...prev,
-      [id || video.src]: isLandscape,
-    }));
+    setLandscapeItems((prev) => ({ ...prev, [id || video.src]: isLandscape }));
   };
 
   const handlePrev = () => {
@@ -91,46 +85,61 @@ const MediaPage = () => {
   const toggleSelectItem = (id: string) => {
     setSelectedItems((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
       return newSet;
     });
   };
 
-  return (
-    <div className="p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold mb-4">Image & Video Gallery</h2>
+  const handleMoveSelectedToBin = async () => {
+    try {
+      const ids = Array.from(selectedItems);
+      if (!ids.length) return;
+      await moveManyToBinApi(ids);
+      setMedia((prev) => prev.filter((m) => !selectedItems.has(m.id!)));
+      setSelectedItems(new Set());
+      setSelectionMode(false);
+    } catch (err) {
+      console.error("Failed to move selected items to bin", err);
+    }
+  };
 
-        {/* Selection Toggle */}
-        <div className="mb-4 flex items-center gap-4">
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-3xl font-semibold tracking-tight text-gray-800">
+          📷 Media Gallery
+        </h2>
+
+        <div className="flex items-center gap-3">
           <button
-            className={
-              selectionMode
-                ? "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                : "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            }
             onClick={() => {
               setSelectionMode((prev) => !prev);
-              if (selectionMode) setSelectedItems(new Set()); // Clear selection when exiting
+              if (selectionMode) setSelectedItems(new Set());
             }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+              selectionMode
+                ? "bg-red-600 hover:bg-red-700 text-white"
+                : "bg-blue-600 hover:bg-blue-700 text-white"
+            }`}
           >
-            {selectionMode ? "Cancel Selection" : "Select Photos"}
+            {selectionMode ? <X size={20} /> : <Trash2 size={20} />}
+            {selectionMode ? "Cancel Selection" : "Select Media"}
           </button>
 
           {selectionMode && selectedItems.size > 0 && (
-            <span className="text-lg font-medium">
-              {selectedItems.size} selected
-            </span>
+            <button
+              onClick={handleMoveSelectedToBin}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium"
+            >
+              <Trash2 size={20} />
+              Move to Bin ({selectedItems.size})
+            </button>
           )}
         </div>
       </div>
 
-      {/* Media Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
         {media.map((item, index) => {
           const key = item.id || item.url;
           const isLandscape = landscapeItems[key] ?? false;
@@ -139,13 +148,9 @@ const MediaPage = () => {
           return (
             <div
               key={key}
-              onClick={() => {
-                if (selectionMode) {
-                  toggleSelectItem(key);
-                } else {
-                  setSelectedIndex(index);
-                }
-              }}
+              onClick={() =>
+                selectionMode ? toggleSelectItem(key) : setSelectedIndex(index)
+              }
               className={`relative cursor-pointer overflow-hidden bg-white flex items-center justify-center border-4 transition-all duration-200 ${
                 isLandscape ? "md:col-span-2" : ""
               } ${
@@ -154,19 +159,17 @@ const MediaPage = () => {
                   : "border-transparent"
               }`}
             >
-              {/* Checkbox */}
               {selectionMode && (
-                <div className="absolute top-2 right-2 bg-white rounded-full p-1">
+                <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
                   <input
                     type="checkbox"
                     checked={isSelected}
                     readOnly
-                    className="w-5 h-5"
+                    className="w-5 h-5 accent-blue-600"
                   />
                 </div>
               )}
 
-              {/* Media display */}
               {item.type === "PHOTO" ? (
                 <img
                   src={`${BASE_URL}${item.url}`}
@@ -191,39 +194,38 @@ const MediaPage = () => {
         })}
       </div>
 
-      {/* Fullscreen Viewer */}
       {selectedIndex !== null && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-6">
           <button
             onClick={() => setSelectedIndex(null)}
-            className="absolute top-4 right-6 text-white text-4xl font-bold"
+            className="absolute top-6 right-8 text-white text-4xl font-bold hover:text-red-400 transition"
           >
             ×
           </button>
           <button
             onClick={handlePrev}
-            className="absolute left-4 text-white text-4xl font-bold"
+            className="absolute left-6 text-white text-4xl font-bold hover:text-blue-300"
           >
-            ‹
+            <ArrowLeft size={32} />
           </button>
           <button
             onClick={handleNext}
-            className="absolute right-4 text-white text-4xl font-bold"
+            className="absolute right-6 text-white text-4xl font-bold hover:text-blue-300"
           >
-            ›
+            <ArrowRight size={32} />
           </button>
 
-          <div className="max-h-screen max-w-screen flex items-center justify-center">
+          <div className="max-h-screen max-w-screen flex items-center justify-center rounded-lg overflow-hidden">
             {media[selectedIndex].type === "PHOTO" ? (
               <img
                 src={`${BASE_URL}${media[selectedIndex].url}`}
                 alt="Full view"
-                className="max-h-screen max-w-screen object-contain"
+                className="max-h-[90vh] max-w-[90vw] object-contain"
               />
             ) : (
               <video
                 src={`${BASE_URL}${media[selectedIndex].url}`}
-                className="max-h-screen max-w-screen object-contain"
+                className="max-h-[90vh] max-w-[90vw] object-contain"
                 controls
                 autoPlay
               />

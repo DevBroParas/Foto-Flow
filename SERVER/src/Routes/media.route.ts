@@ -6,6 +6,8 @@ import {
   getMediaById,
   downloadMediaFile,
   deleteAllMedia,
+  moveToBin,
+  moveManyToBin,
 } from "../Controller/media.controller";
 import { protect } from "../Middleware/auth.middleware";
 import { upload } from "../Middleware/upload.middleware";
@@ -29,5 +31,9 @@ router.get("/:filename/download", protect, downloadMediaFile);
 
 // Route to delete media by ID
 router.delete("/:id", protect, deleteMedia);
+
+router.patch("/:id/bin", protect, moveToBin);
+
+router.patch("/move-to-bin", protect, moveManyToBin);
 
 export default router;

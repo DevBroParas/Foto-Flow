@@ -27,12 +27,14 @@ import mediaRoute from "./Routes/media.route";
 import recognizeRoute from "./Routes/recognize.route";
 import personRoute from "./Routes/person.route";
 import faceRoute from "./Routes/face.route";
+import bin from "./Routes/bin.route";
 app.use("/user", userRoute);
 app.use("/album", albumRoute);
 app.use("/media", mediaRoute);
 app.use("/recognize", recognizeRoute);
 app.use("/person", personRoute);
 app.use("/face", faceRoute);
+app.use("/bin", bin);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);

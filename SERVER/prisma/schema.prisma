@@ -43,6 +43,7 @@ model Media {
   recognitionStatus RecognitionStatus @default(PENDING)
   recognizedFaces   RecognizedFace[]
   createdAt         DateTime          @default(now())
+  deletedAt         DateTime?
 
   // Inverse relation for Album.coverPhoto
   albumCoverOf Album? @relation("AlbumCover")
@@ -71,7 +72,7 @@ model RecognizedFace {
   createdAt        DateTime @default(now())
   isPotentialMatch Boolean  @default(false)
   isConfirmed      Boolean?
-  similarity       Float 
+  similarity       Float
 }
 
 enum MediaType {

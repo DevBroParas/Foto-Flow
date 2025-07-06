@@ -76,7 +76,7 @@ export const getMedia = async (
     }
 
     const media = await Prisma.media.findMany({
-      where: { userId },
+      where: { userId, deletedAt: null },
       orderBy: { takenAt: "desc" },
     });
 
@@ -302,5 +302,81 @@ export const deleteAllMedia = async (
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to delete all media" });
+  }
+};
+
+export const moveToBin = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ message: "User not authenticated." });
+      return;
+    }
+
+    const media = await Prisma.media.findUnique({ where: { id } });
+    if (!media || media.userId !== userId) {
+      res.status(404).json({ message: "Media not found or unauthorized" });
+      return;
+    }
+
+    await Prisma.media.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    res.status(200).json({ message: "Media moved to bin" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to move media to bin" });
+  }
+};
+
+export const moveManyToBin = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { ids } = req.body; // Expect array of media IDs
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ message: "User not authenticated." });
+      return;
+    }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ message: "No media IDs provided." });
+      return;
+    }
+
+    // Optional: Ensure only user's media are affected
+    const media = await Prisma.media.findMany({
+      where: {
+        id: { in: ids },
+        userId,
+      },
+    });
+
+    if (media.length === 0) {
+      res.status(404).json({ message: "No media found or unauthorized." });
+      return;
+    }
+
+    await Prisma.media.updateMany({
+      where: {
+        id: { in: ids },
+        userId,
+      },
+      data: { deletedAt: new Date() },
+    });
+
+    res.status(200).json({ message: "Selected media moved to bin." });
+  } catch (err) {
+    console.error("Error moving to bin:", err);
+    res.status(500).json({ message: "Server error moving media to bin." });
   }
 };

@@ -1,32 +1,22 @@
-import { Link } from "react-router-dom";
+import { SidebarTrigger } from "./ui/sidebar";
 
 const Navbar = () => {
   return (
-    <nav className="flex items-center">
-      <div className="flex items-center justify-start flex-1">
-        <img className=" w-30" src="/logo.png" alt="logo" />
-        <h1 className="text-5xl font-bold ml-2">Foto Flow</h1>
+    <nav className="bg-gray-900 text-white px-6 py-4 shadow-md w-full">
+      <div className="flex items-center justify-between w-full">
+        {/* Logo + Title */}
+        <div className="flex items-center space-x-3">
+          <img
+            src="/logo.png"
+            alt="logo"
+            className="w-10 h-10 object-contain"
+          />
+          <h1 className="text-xl font-bold tracking-tight">Foto Flow</h1>
+        </div>
+
+        {/* Optional user actions / sidebar trigger for mobile */}
+        <SidebarTrigger className="md:hidden" />
       </div>
-      <ul className="flex items-center justify-center gap-6 flex-1 cursor-pointer">
-        <li className=" text-xl ">
-          <Link to="/media">MEDIA</Link>
-        </li>
-        <li className=" text-xl ">
-          <Link to="/photo">PHOTO</Link>
-        </li>
-        <li className=" text-xl ">
-          <Link to="/video">VIDEO</Link>
-        </li>
-        <li className=" text-xl ">
-          <Link to="/album">ALBUM</Link>
-        </li>
-        <li className=" text-xl ">
-          <Link to="/people">PEOPLE</Link>
-        </li>
-        <li className=" text-xl ">
-          <Link to="/bin">BIN</Link>
-        </li>
-      </ul>
     </nav>
   );
 };

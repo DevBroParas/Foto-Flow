@@ -1,16 +1,26 @@
-// src/layouts/MainLayout.tsx
-
 import { Outlet } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 
 const MainLayout = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className="p-4">
-        <Outlet />
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-screen overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-64 shrink-0">
+          <AppSidebar />
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex flex-col flex-1 w-full">
+          <Navbar />
+          <main className="flex-1 overflow-auto bg-green-200">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 };
 
