@@ -43,18 +43,18 @@ export const uploadMedia = async (
       },
     });
     // Send request to Face Recognisation API
-    // if (mediaType === "PHOTO") {
-    //   await axios
-    //     .post(process.env.FACE_API_KEY!, {
-    //       media_id: newMedia.id,
-    //       filename: file.filename,
-    //     })
-    //
-    //     .then(() =>
-    //       console.log(`Recognition triggered for media ${newMedia.id}`)
-    //     )
-    //     .catch((err) => console.error("Recognition failed:", err));
-    // }
+    if (mediaType === "PHOTO") {
+      await axios
+        .post(process.env.FACE_API_KEY!, {
+          media_id: newMedia.id,
+          filename: file.filename,
+        })
+
+        .then(() =>
+          console.log(`Recognition triggered for media ${newMedia.id}`)
+        )
+        .catch((err) => console.error("Recognition failed:", err));
+    }
 
     res.status(201).json({ media: newMedia });
   } catch (err) {

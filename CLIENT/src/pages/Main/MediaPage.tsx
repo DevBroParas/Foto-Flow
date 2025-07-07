@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { getAllMedia, moveManyToBinApi } from "../../service/MediaService";
 import { Trash2, X, ArrowLeft, ArrowRight } from "lucide-react";
+import FullscreenViewer from "@/components/FullscreenViewer";
+import MediaGridItem from "@/components/MediaGridItem";
 
 type Media = {
   id: string | null;
@@ -140,7 +142,7 @@ const MediaPage = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-        {media.map((item, index) => {
+        {/* {media.map((item, index) => {
           const key = item.id || item.url;
           const isLandscape = landscapeItems[key] ?? false;
           const isSelected = selectedItems.has(key);
@@ -191,47 +193,38 @@ const MediaPage = () => {
               )}
             </div>
           );
+        })} */}
+        {media.map((item, index) => {
+          const key = item.id || item.url;
+          return (
+            <MediaGridItem
+              key={key}
+              url={item.url}
+              id={item.id!}
+              type={item.type}
+              isSelected={selectedItems.has(key)}
+              selectionMode={selectionMode}
+              isLandscape={landscapeItems[key] ?? false}
+              baseUrl={BASE_URL}
+              onClick={() =>
+                selectionMode ? toggleSelectItem(key) : setSelectedIndex(index)
+              }
+              onLoadImage={handleImageLoad}
+              onLoadVideo={handleVideoMetadata}
+            />
+          );
         })}
       </div>
 
       {selectedIndex !== null && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-6">
-          <button
-            onClick={() => setSelectedIndex(null)}
-            className="absolute top-6 right-8 text-white text-4xl font-bold hover:text-red-400 transition"
-          >
-            ×
-          </button>
-          <button
-            onClick={handlePrev}
-            className="absolute left-6 text-white text-4xl font-bold hover:text-blue-300"
-          >
-            <ArrowLeft size={32} />
-          </button>
-          <button
-            onClick={handleNext}
-            className="absolute right-6 text-white text-4xl font-bold hover:text-blue-300"
-          >
-            <ArrowRight size={32} />
-          </button>
-
-          <div className="max-h-screen max-w-screen flex items-center justify-center rounded-lg overflow-hidden">
-            {media[selectedIndex].type === "PHOTO" ? (
-              <img
-                src={`${BASE_URL}${media[selectedIndex].url}`}
-                alt="Full view"
-                className="max-h-[90vh] max-w-[90vw] object-contain"
-              />
-            ) : (
-              <video
-                src={`${BASE_URL}${media[selectedIndex].url}`}
-                className="max-h-[90vh] max-w-[90vw] object-contain"
-                controls
-                autoPlay
-              />
-            )}
-          </div>
-        </div>
+        <FullscreenViewer
+          media={media}
+          selectedIndex={selectedIndex}
+          onClose={() => setSelectedIndex(null)}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          baseUrl={BASE_URL}
+        />
       )}
     </div>
   );

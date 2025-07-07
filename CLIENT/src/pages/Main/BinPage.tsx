@@ -4,6 +4,8 @@ import {
   deleteManyPermanentlyApi,
   restoreMediaApi,
 } from "@/service/BinService";
+import FullscreenViewer from "@/components/FullscreenViewer";
+import MediaGridItem from "@/components/MediaGridItem";
 
 const BASE_URL = import.meta.env.VITE_API_URL?.replace(
   /\/api\/?$/,
@@ -61,11 +63,9 @@ const BinPage = () => {
   ) => {
     const img = e.currentTarget;
     const isLandscape = img.naturalWidth > img.naturalHeight;
-    if (id)
-      setLandscapeItems((prev) => ({
-        ...prev,
-        [id]: isLandscape,
-      }));
+    if (id) {
+      setLandscapeItems((prev) => ({ ...prev, [id]: isLandscape }));
+    }
   };
 
   const handleVideoMetadata = (
@@ -74,11 +74,9 @@ const BinPage = () => {
   ) => {
     const video = e.currentTarget;
     const isLandscape = video.videoWidth > video.videoHeight;
-    if (id)
-      setLandscapeItems((prev) => ({
-        ...prev,
-        [id]: isLandscape,
-      }));
+    if (id) {
+      setLandscapeItems((prev) => ({ ...prev, [id]: isLandscape }));
+    }
   };
 
   const handlePrev = () => {
@@ -104,7 +102,7 @@ const BinPage = () => {
   const handleDeleteSelected = async () => {
     try {
       const ids = Array.from(selectedItems).filter(Boolean);
-      if (ids.length === 0) return;
+      if (!ids.length) return;
       await deleteManyPermanentlyApi(ids);
       setMedia((prev) => prev.filter((m) => !selectedItems.has(m.id!)));
       setSelectedItems(new Set());
@@ -117,7 +115,7 @@ const BinPage = () => {
   const handleRestoreSelected = async () => {
     try {
       const ids = Array.from(selectedItems).filter(Boolean);
-      if (ids.length === 0) return;
+      if (!ids.length) return;
       await restoreMediaApi(ids);
       setMedia((prev) => prev.filter((m) => !selectedItems.has(m.id!)));
       setSelectedItems(new Set());
@@ -183,96 +181,41 @@ const BinPage = () => {
             const isSelected = selectedItems.has(key);
 
             return (
-              <div
+              <MediaGridItem
                 key={key}
+                url={item.url}
+                id={item.id!}
+                type={item.type}
+                isSelected={selectedItems.has(key)}
+                selectionMode={selectionMode}
+                isLandscape={landscapeItems[key] ?? false}
+                baseUrl={BASE_URL}
                 onClick={() =>
                   selectionMode
                     ? toggleSelectItem(key)
                     : setSelectedIndex(index)
                 }
-                className={`relative cursor-pointer overflow-hidden bg-white flex items-center justify-center border-4 transition-all duration-200 ${
-                  isLandscape ? "md:col-span-2" : ""
-                } ${
-                  selectionMode && isSelected
-                    ? "border-blue-500"
-                    : "border-transparent"
-                }`}
-              >
-                {selectionMode && (
-                  <div className="absolute top-2 right-2 bg-white rounded-full p-1">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      readOnly
-                      className="w-5 h-5"
-                    />
-                  </div>
-                )}
-
-                {item.type === "PHOTO" ? (
-                  <img
-                    src={`${BASE_URL}${item.url}`}
-                    alt={`Media ${item.id}`}
-                    className="max-h-[400px] w-full object-contain"
-                    onLoad={(e) => handleImageLoad(e, item.id)}
-                    loading="lazy"
-                  />
-                ) : (
-                  <video
-                    src={`${BASE_URL}${item.url}`}
-                    className="max-h-[400px] w-full object-contain"
-                    muted
-                    loop
-                    autoPlay
-                    playsInline
-                    onLoadedMetadata={(e) => handleVideoMetadata(e, item.id)}
-                  />
-                )}
-              </div>
+                onLoadImage={handleImageLoad}
+                onLoadVideo={handleVideoMetadata}
+              />
             );
           })}
         </div>
       )}
 
-      {/* Fullscreen Viewer */}
       {selectedIndex !== null && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4">
-          <button
-            onClick={() => setSelectedIndex(null)}
-            className="absolute top-4 right-6 text-white text-4xl font-bold"
-          >
-            ×
-          </button>
-          <button
-            onClick={handlePrev}
-            className="absolute left-4 text-white text-4xl font-bold"
-          >
-            ‹
-          </button>
-          <button
-            onClick={handleNext}
-            className="absolute right-4 text-white text-4xl font-bold"
-          >
-            ›
-          </button>
-
-          <div className="max-h-screen max-w-screen flex items-center justify-center">
-            {media[selectedIndex].type === "PHOTO" ? (
-              <img
-                src={`${BASE_URL}${media[selectedIndex].url}`}
-                alt="Full view"
-                className="max-h-screen max-w-screen object-contain"
-              />
-            ) : (
-              <video
-                src={`${BASE_URL}${media[selectedIndex].url}`}
-                className="max-h-screen max-w-screen object-contain"
-                controls
-                autoPlay
-              />
-            )}
-          </div>
-        </div>
+        <FullscreenViewer
+          media={media.map((m) => ({
+            id: m.id!,
+            type: m.type,
+            url: m.url,
+          }))}
+          selectedIndex={selectedIndex}
+          onClose={() => setSelectedIndex(null)}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          baseUrl={BASE_URL}
+        />
       )}
     </div>
   );

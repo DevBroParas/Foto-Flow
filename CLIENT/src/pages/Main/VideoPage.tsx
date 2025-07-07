@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getAllMedia } from "../../service/MediaService";
+import FullscreenViewer from "@/components/FullscreenViewer";
+import MediaGridItem from "@/components/MediaGridItem";
 
 type Media = {
   id: string | null;
@@ -113,7 +115,7 @@ const VideoPage = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {media.map((item, index) => {
+        {/* {media.map((item, index) => {
           const key = item.id || item.url;
           const isLandscape = landscapeItems[key] ?? false;
           const isSelected = selectedItems.has(key);
@@ -157,39 +159,37 @@ const VideoPage = () => {
               />
             </div>
           );
+        })} */}
+        {media.map((item, index) => {
+          const key = item.id || item.url;
+          return (
+            <MediaGridItem
+              key={key}
+              url={item.url}
+              id={item.id!}
+              type={item.type}
+              isSelected={selectedItems.has(key)}
+              selectionMode={selectionMode}
+              isLandscape={landscapeItems[key] ?? false}
+              baseUrl={BASE_URL}
+              onClick={() =>
+                selectionMode ? toggleSelectItem(key) : setSelectedIndex(index)
+              }
+              onLoadVideo={handleVideoMetadata}
+            />
+          );
         })}
       </div>
 
       {selectedIndex !== null && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4">
-          <button
-            onClick={() => setSelectedIndex(null)}
-            className="absolute top-4 right-6 text-white text-4xl font-bold"
-          >
-            ×
-          </button>
-          <button
-            onClick={handlePrev}
-            className="absolute left-4 text-white text-4xl font-bold"
-          >
-            ‹
-          </button>
-          <button
-            onClick={handleNext}
-            className="absolute right-4 text-white text-4xl font-bold"
-          >
-            ›
-          </button>
-
-          <div className="max-h-screen max-w-screen flex items-center justify-center">
-            <video
-              src={`${BASE_URL}${media[selectedIndex].url}`}
-              className="max-h-screen max-w-screen object-contain"
-              controls
-              autoPlay
-            />
-          </div>
-        </div>
+        <FullscreenViewer
+          media={media}
+          selectedIndex={selectedIndex}
+          onClose={() => setSelectedIndex(null)}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          baseUrl={BASE_URL}
+        />
       )}
     </div>
   );

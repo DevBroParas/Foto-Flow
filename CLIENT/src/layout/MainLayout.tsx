@@ -15,7 +15,7 @@ const MainLayout = () => {
         {/* Main Content Area */}
         <div className="flex flex-col flex-1 w-full">
           <Navbar />
-          <main className="flex-1 overflow-auto bg-green-200">
+          <main className="flex-1 overflow-auto">
             <Outlet />
           </main>
         </div>

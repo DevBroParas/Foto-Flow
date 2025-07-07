@@ -6,6 +6,8 @@ import {
   updateAlbumApi,
 } from "@/service/AlbumService";
 import { getAllMedia } from "@/service/MediaService";
+import MediaGridItem from "@/components/MediaGridItem";
+import FullscreenViewer from "@/components/FullscreenViewer";
 
 const BASE_URL = import.meta.env.VITE_API_URL?.replace(
   /\/api\/?$/,
@@ -40,6 +42,10 @@ const AlbumPage = () => {
   const [newDescription, setNewDescription] = useState("");
   const [media, setMedia] = useState<Media[]>([]);
   const [selectedMedia, setSelectedMedia] = useState<Set<string>>(new Set());
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [landscapeItems, setLandscapeItems] = useState<Record<string, boolean>>(
+    {}
+  );
   const menuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -55,17 +61,6 @@ const AlbumPage = () => {
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const isOutside = Object.values(menuRefs.current).every(
-        (ref) => !ref || !ref.contains(e.target as Node)
-      );
-      if (isOutside) setMenuOpenId(null);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
     if (!createMode) return;
     const fetchMedia = async () => {
       try {
@@ -77,6 +72,60 @@ const AlbumPage = () => {
     };
     fetchMedia();
   }, [createMode]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedIndex === null) return;
+      if (e.key === "Escape") setSelectedIndex(null);
+      if (e.key === "ArrowLeft") handlePrev();
+      if (e.key === "ArrowRight") handleNext();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedIndex, selectedAlbum]);
+
+  const handlePrev = () => {
+    if (selectedAlbum && selectedIndex !== null) {
+      setSelectedIndex((prev) =>
+        prev! > 0 ? prev! - 1 : selectedAlbum.media.length - 1
+      );
+    }
+  };
+
+  const handleNext = () => {
+    if (selectedAlbum && selectedIndex !== null) {
+      setSelectedIndex((prev) =>
+        prev! < selectedAlbum.media.length - 1 ? prev! + 1 : 0
+      );
+    }
+  };
+
+  const handleImageLoad = (
+    e: React.SyntheticEvent<HTMLImageElement>,
+    id: string | null
+  ) => {
+    const img = e.currentTarget;
+    const isLandscape = img.naturalWidth > img.naturalHeight;
+    setLandscapeItems((prev) => ({ ...prev, [id || img.src]: isLandscape }));
+  };
+
+  const handleVideoMetadata = (
+    e: React.SyntheticEvent<HTMLVideoElement>,
+    id: string | null
+  ) => {
+    const video = e.currentTarget;
+    const isLandscape = video.videoWidth > video.videoHeight;
+    setLandscapeItems((prev) => ({ ...prev, [id || video.src]: isLandscape }));
+  };
+
+  const toggleMedia = (id: string) => {
+    setSelectedMedia((prev) => {
+      const updated = new Set(prev);
+      if (updated.has(id)) updated.delete(id);
+      else updated.add(id);
+      return updated;
+    });
+  };
 
   const handleEditClick = (album: Album) => {
     setEditAlbum(album);
@@ -128,15 +177,6 @@ const AlbumPage = () => {
     } catch (err) {
       console.error("Album creation failed", err);
     }
-  };
-
-  const toggleMedia = (id: string) => {
-    setSelectedMedia((prev) => {
-      const updated = new Set(prev);
-      if (updated.has(id)) updated.delete(id);
-      else updated.add(id);
-      return updated;
-    });
   };
 
   return (
@@ -239,7 +279,7 @@ const AlbumPage = () => {
       )}
 
       {selectedAlbum ? (
-        <div>
+        <>
           <button
             className="mb-4 text-blue-600 underline"
             onClick={() => setSelectedAlbum(null)}
@@ -248,7 +288,39 @@ const AlbumPage = () => {
           </button>
           <h2 className="text-2xl font-bold mb-2">{selectedAlbum.title}</h2>
           <p className="text-gray-600 mb-4">{selectedAlbum.description}</p>
-        </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {selectedAlbum.media.map((item, index) => {
+              const key = item.id || item.url;
+              return (
+                <MediaGridItem
+                  key={key}
+                  url={item.url}
+                  id={item.id}
+                  type={item.type}
+                  isSelected={false}
+                  selectionMode={false}
+                  isLandscape={landscapeItems[key] ?? false}
+                  baseUrl={BASE_URL}
+                  onClick={() => setSelectedIndex(index)}
+                  onLoadImage={handleImageLoad}
+                  onLoadVideo={handleVideoMetadata}
+                />
+              );
+            })}
+          </div>
+
+          {selectedIndex !== null && (
+            <FullscreenViewer
+              media={selectedAlbum.media}
+              selectedIndex={selectedIndex}
+              onClose={() => setSelectedIndex(null)}
+              onPrev={handlePrev}
+              onNext={handleNext}
+              baseUrl={BASE_URL}
+            />
+          )}
+        </>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {albums.map((item) => (
