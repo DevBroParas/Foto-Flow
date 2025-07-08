@@ -15,7 +15,7 @@ import { upload } from "../Middleware/upload.middleware";
 const router = express.Router();
 
 // Route to upload media
-router.post("/upload", protect, upload.single("file"), uploadMedia);
+router.post("/upload", protect, upload.array("files", 50), uploadMedia);
 
 // Route to get all media for the logged-in user
 router.get("/", protect, getMedia);

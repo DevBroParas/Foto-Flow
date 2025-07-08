@@ -21,6 +21,14 @@ export const getAllPersons = async (
     },
   });
 
+  const personsWithBoundingBox = persons.map((person) => ({
+    ...person,
+    faces: person.faces.map((face) => ({
+      ...face,
+      boundingBox: face.boundingBox,
+    })),
+  }));
+
   res.json(persons);
 };
 

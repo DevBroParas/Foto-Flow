@@ -45,8 +45,8 @@ def recognize_faces(self, media_id: str, filename: str):
 
         image = resize_image(file_path)
         logger.info(f"Image resized and loaded for {filename}")
-
-        locations = face_recognition.face_locations(image, model="cnn")
+        # you can use cnn for accuracy and hog for speed on low end device
+        locations = face_recognition.face_locations(image, model="hog")
         if not locations:
             logger.info(f"No faces found in {filename}. Sending empty response.")
             requests.post(BACKEND_URL + "/recognize/internal", json={

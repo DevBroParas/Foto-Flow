@@ -6,4 +6,4 @@ export const moveToBin = async (id: string) =>
 export const moveManyToBinApi = async (ids: string[]) =>
   await API.patch("/media/move-to-bin", { ids });
 
-// export const uploadMedia = async () => await API.post("/media/upload", {
+export const uploadMedia = async (formData: FormData) => await API.post("/media/upload", formData);

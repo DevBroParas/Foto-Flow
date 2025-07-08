@@ -12,53 +12,65 @@ export const uploadMedia = async (
   res: Response
 ): Promise<void> => {
   try {
-    const file = req.file;
+    const files = req.files as Express.Multer.File[];
     const userId = req.user?.id;
 
-    if (!file || !userId) {
-      res.status(400).json({ message: "Missing file or user." });
+    if (!files || files.length === 0 || !userId) {
+      res.status(400).json({ message: "Missing files or user." });
       return;
     }
 
-    // ✅ Ensure uploads directory exists
+    const { albumId, takenAt } = req.body;
+
+    // Ensure uploads directory exists
     const uploadDir = path.join(__dirname, "..", "uploads");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    const { albumId, takenAt } = req.body;
+    const createdMedia = [];
 
-    const ext = file.originalname.split(".").pop()?.toLowerCase();
-    const mediaType: MediaType =
-      ext === "mp4" || ext === "mov" || ext === "avi" ? "VIDEO" : "PHOTO";
+    for (const file of files) {
+      const ext = file.originalname.split(".").pop()?.toLowerCase();
+      const mediaType: MediaType =
+        ext === "mp4" || ext === "mov" || ext === "avi" ? "VIDEO" : "PHOTO";
 
-    const newMedia = await Prisma.media.create({
-      data: {
-        userId,
-        albumId: albumId || null,
-        url: `/uploads/${file.filename}`,
-        thumbnailUrl: null,
-        type: mediaType,
-        takenAt: takenAt ? new Date(takenAt) : undefined,
-      },
-    });
-    // Send request to Face Recognisation API
-    if (mediaType === "PHOTO") {
-      await axios
-        .post(process.env.FACE_API_KEY!, {
-          media_id: newMedia.id,
-          filename: file.filename,
-        })
+      const newMedia = await Prisma.media.create({
+        data: {
+          userId,
+          albumId: albumId || null,
+          url: `/uploads/${file.filename}`,
+          thumbnailUrl: null,
+          type: mediaType,
+          takenAt: takenAt ? new Date(takenAt) : undefined,
+        },
+      });
 
-        .then(() =>
-          console.log(`Recognition triggered for media ${newMedia.id}`)
-        )
-        .catch((err) => console.error("Recognition failed:", err));
+      createdMedia.push(newMedia);
     }
 
-    res.status(201).json({ media: newMedia });
+    // Batch trigger face recognition for all photos
+    const photoItems = createdMedia
+      .filter((media) => media.type === "PHOTO")
+      .map((media) => ({
+        media_id: media.id,
+        filename: path.basename(media.url),
+      }));
+
+    if (photoItems.length > 0) {
+      axios
+        .post(`${process.env.FACE_API_KEY}`, { items: photoItems })
+        .then(() =>
+          console.log(
+            `Recognition batch triggered for ${photoItems.length} items`
+          )
+        )
+        .catch((err) => console.error("Batch recognition failed:", err));
+    }
+
+    res.status(201).json({ media: createdMedia });
   } catch (err) {
-    console.error(err);
+    console.error("Upload failed:", err);
     res.status(500).json({ message: "Upload failed" });
   }
 };

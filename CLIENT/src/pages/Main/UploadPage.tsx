@@ -3,21 +3,23 @@ import { UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { uploadMedia } from "@/service/MediaService";
 
 const UploadPage = () => {
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles([...files, ...Array.from(e.target.files)]);
+    if (e.target.files && e.target.files.length > 0) {
+      setFiles((prev) => [...prev, ...Array.from(e.target.files as FileList)]);
     }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files) {
-      setFiles([...files, ...Array.from(e.dataTransfer.files)]);
+      setFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
     }
   };
 
@@ -25,9 +27,23 @@ const UploadPage = () => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = () => {
-    console.log("Uploading files:", files);
-    // TODO: API call to upload
+  const handleUpload = async () => {
+    if (!files.length) return;
+    setUploading(true);
+
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+
+    try {
+      const response = await uploadMedia(formData);
+      console.log("Upload successful:", response.data);
+      setFiles([]);
+      // Optionally show toast or redirect
+    } catch (err) {
+      console.error("Upload failed:", err);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -90,10 +106,10 @@ const UploadPage = () => {
       {/* Upload button */}
       <Button
         onClick={handleUpload}
-        disabled={files.length === 0}
+        disabled={files.length === 0 || uploading}
         className="w-full sm:w-auto"
       >
-        Upload {files.length > 0 ? `(${files.length})` : ""}
+        {uploading ? "Uploading..." : `Upload (${files.length})`}
       </Button>
     </div>
   );

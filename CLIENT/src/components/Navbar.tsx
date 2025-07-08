@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import {
@@ -26,46 +27,50 @@ const Navbar = () => {
     useAppSelector((state) => state.selection);
 
   const selectedCount = selectedItems.length;
-
-  const handleToggleSelection = () => {
-    console.log("Toggling selection mode:", !selectionMode);
-    dispatch(toggleSelectionMode());
-  };
-
-  const handleBack = () => {
-    console.log("Back clicked in tab:", currentTab);
-    if (currentTab === "album" && selectedAlbumId) {
-      console.log("Clearing selected album ID");
-      dispatch(setSelectedAlbumId(null));
-    } else if (currentTab === "people") {
-      console.log("Clearing selected person ID");
-      dispatch(setSelectedPersonId(null));
-    }
-  };
-
-  const handleMoveToBin = () => {
-    console.log("Moving to bin:", selectedItems);
-    dispatch(moveSelectedMediaToBin(selectedItems));
-  };
-
-  const handleRestore = () => {
-    console.log("Restoring media:", selectedItems);
-    dispatch(restoreSelectedBinMedia(selectedItems));
-  };
-
-  const handleDeletePermanently = () => {
-    console.log("Deleting permanently:", selectedItems);
-    dispatch(deleteSelectedBinMedia(selectedItems));
-  };
-
   const showChevronBack =
     !selectionMode && (currentTab === "album" || currentTab === "people");
 
+  // 🚀 State to show/hide navbar on scroll
+  const [showNavbar, setShowNavbar] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < lastScrollY || currentY < 100) {
+        setShowNavbar(true);
+      } else {
+        setShowNavbar(false);
+      }
+      setLastScrollY(currentY);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
+
+  const handleToggleSelection = () => dispatch(toggleSelectionMode());
+  const handleBack = () => {
+    if (currentTab === "album" && selectedAlbumId) {
+      dispatch(setSelectedAlbumId(null));
+    } else if (currentTab === "people") {
+      dispatch(setSelectedPersonId(null));
+    }
+  };
+  const handleMoveToBin = () => dispatch(moveSelectedMediaToBin(selectedItems));
+  const handleRestore = () => dispatch(restoreSelectedBinMedia(selectedItems));
+  const handleDeletePermanently = () =>
+    dispatch(deleteSelectedBinMedia(selectedItems));
+
   return (
-    <nav className=" text-primary px-4 sm:px-6 py-3 shadow-lg w-full">
+    <nav
+      className={`fixed top-0 md:left-64 left-0 right-0 z-50 bg-gray-900 text-white px-4 sm:px-6 py-3 shadow-lg transition-transform duration-300 ${
+        showNavbar ? "translate-y-0" : "-translate-y-full"
+      }`}
+    >
+      <SidebarTrigger className="md:hidden" />
       <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
-        <SidebarTrigger className="md:hidden" />
-        {/* Left: Back Button */}
+        {/* Back Button */}
         <div className="flex items-center gap-4">
           {showChevronBack ? (
             <Button
@@ -81,10 +86,9 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Center: Selection Actions */}
+        {/* Action Buttons */}
         {currentTab && !["album", "people"].includes(currentTab) && (
-          <div className="flex items-center gap-3">
-            {/* Toggle Select Mode (icon only) */}
+          <div className="hidden md:flex items-center gap-3">
             <Button
               onClick={handleToggleSelection}
               variant="ghost"
@@ -98,44 +102,36 @@ const Navbar = () => {
               )}
             </Button>
 
-            {/* Move to Bin */}
             {selectionMode &&
               selectedCount > 0 &&
               ["media", "photo", "video"].includes(currentTab) && (
                 <Button
                   onClick={handleMoveToBin}
                   variant="destructive"
-                  className="flex items-center gap-2"
+                  className="text-white hover:text-red-300"
                 >
                   <Trash2 size={20} />
-                  <span className="hidden md:inline">
-                    Move to Bin ({selectedCount})
-                  </span>
+                  Move to Bin ({selectedCount})
                 </Button>
               )}
 
-            {/* Bin Restore & Delete */}
             {selectionMode && selectedCount > 0 && currentTab === "bin" && (
               <>
                 <Button
                   onClick={handleRestore}
-                  className="flex items-center gap-2 bg-green-700 hover:text-green-400"
+                  className="hover:text-green-600 bg-green-700"
                 >
                   <Undo2 size={20} />
-                  <span className="hidden md:inline">
-                    Restore ({selectedCount})
-                  </span>
+                  Restore ({selectedCount})
                 </Button>
 
                 <Button
                   onClick={handleDeletePermanently}
                   variant="destructive"
-                  className="flex items-center gap-2"
+                  className="text-white hover:text-red-200"
                 >
                   <DeleteIcon size={20} />
-                  <span className="hidden md:inline">
-                    Delete Permanently ({selectedCount})
-                  </span>
+                  Delete Permanently ({selectedCount})
                 </Button>
               </>
             )}
