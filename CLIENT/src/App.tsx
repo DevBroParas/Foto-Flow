@@ -17,6 +17,7 @@ import VideoPage from "./pages/Main/VideoPage";
 import AlbumPage from "./pages/Main/AlbumPage";
 import PeoplePage from "./pages/Main/PeoplePage";
 import BinPage from "./pages/Main/BinPage";
+import UploadPage from "./pages/Main/UploadPage";
 
 function App() {
   const dispatch = useAppDispatch();
@@ -41,6 +42,7 @@ function App() {
         <Route path="/" element={<MainLayout />}>
           {/* Example nested routes inside MainLayout */}
           <Route index element={<HomePage />} />
+          <Route path="upload" element={<UploadPage />} />
           <Route path="media" element={<MediaPage />} />
           <Route path="photo" element={<PhotoPage />} />
           <Route path="video" element={<VideoPage />} />

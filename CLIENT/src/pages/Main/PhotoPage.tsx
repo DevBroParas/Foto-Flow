@@ -2,6 +2,12 @@ import React, { useEffect, useState } from "react";
 import { getAllMedia } from "../../service/MediaService";
 import FullscreenViewer from "@/components/FullscreenViewer";
 import MediaGridItem from "@/components/MediaGridItem";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import {
+  setCurrentTab,
+  toggleSelectedItem,
+  setMediaNeedsRefresh,
+} from "@/app/selectionSlice";
 
 type Media = {
   id: string | null;
@@ -26,25 +32,43 @@ const PhotoPage = () => {
     {}
   );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+
+  const dispatch = useAppDispatch();
+  const selectionMode = useAppSelector(
+    (state) => state.selection.selectionMode
+  );
+  const selectedItems = useAppSelector(
+    (state) => state.selection.selectedItems
+  );
+  const mediaNeedsRefresh = useAppSelector(
+    (state) => state.selection.mediaNeedsRefresh
+  );
+
+  const fetchMedia = async () => {
+    try {
+      const response = await getAllMedia();
+      if (response?.data?.media) {
+        const photosOnly = response.data.media
+          .filter((item: Media) => item.type === "PHOTO")
+          .reverse();
+        setMedia(photosOnly);
+      }
+    } catch (error) {
+      console.error("Error fetching media:", error);
+    }
+  };
 
   useEffect(() => {
-    const fetchMedia = async () => {
-      try {
-        const response = await getAllMedia();
-        if (response?.data?.media) {
-          const photosOnly = response.data.media
-            .filter((item: Media) => item.type === "PHOTO")
-            .reverse();
-          setMedia(photosOnly);
-        }
-      } catch (error) {
-        console.error("Error fetching media:", error);
-      }
-    };
+    dispatch(setCurrentTab("photo"));
     fetchMedia();
-  }, []);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (mediaNeedsRefresh) {
+      fetchMedia();
+      dispatch(setMediaNeedsRefresh(false));
+    }
+  }, [mediaNeedsRefresh, dispatch]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -62,10 +86,7 @@ const PhotoPage = () => {
   ) => {
     const img = e.currentTarget;
     const isLandscape = img.naturalWidth > img.naturalHeight;
-    setLandscapeItems((prev) => ({
-      ...prev,
-      [id || img.src]: isLandscape,
-    }));
+    setLandscapeItems((prev) => ({ ...prev, [id || img.src]: isLandscape }));
   };
 
   const handlePrev = () => {
@@ -81,92 +102,28 @@ const PhotoPage = () => {
   };
 
   const toggleSelectItem = (id: string) => {
-    setSelectedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
+    dispatch(toggleSelectedItem(id));
   };
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold mb-4">Photo Gallery</h2>
-        <div className="mb-4 flex items-center gap-4">
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            onClick={() => {
-              setSelectionMode((prev) => !prev);
-              if (selectionMode) setSelectedItems(new Set());
-            }}
-          >
-            {selectionMode ? "Cancel Selection" : "Select Photos"}
-          </button>
-          {selectionMode && selectedItems.size > 0 && (
-            <span className="text-lg font-medium">
-              {selectedItems.size} selected
-            </span>
-          )}
-        </div>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-3xl font-semibold tracking-tight text-gray-800">
+          🖼️ Photo Gallery
+        </h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {/* {media.map((item, index) => {
-          const key = item.id || item.url;
-          const isLandscape = landscapeItems[key] ?? false;
-          const isSelected = selectedItems.has(key);
-
-          return (
-            <div
-              key={key}
-              onClick={() => {
-                if (selectionMode) {
-                  toggleSelectItem(key);
-                } else {
-                  setSelectedIndex(index);
-                }
-              }}
-              className={`relative cursor-pointer overflow-hidden bg-white flex items-center justify-center border-4 transition-all duration-200 ${
-                isLandscape ? "md:col-span-2" : ""
-              } ${
-                selectionMode && isSelected
-                  ? "border-blue-500"
-                  : "border-transparent"
-              }`}
-            >
-              {selectionMode && (
-                <div className="absolute top-2 right-2 bg-white rounded-full p-1">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    readOnly
-                    className="w-5 h-5"
-                  />
-                </div>
-              )}
-              <img
-                src={`${BASE_URL}${item.url}`}
-                alt={`Media ${item.id}`}
-                className="max-h-[400px] w-full object-contain"
-                onLoad={(e) => handleImageLoad(e, item.id)}
-                loading="lazy"
-              />
-            </div>
-          );
-        })} */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-5">
         {media.map((item, index) => {
-          const key = item.id || item.url;
+          const key = item.id ?? item.url;
+
           return (
             <MediaGridItem
               key={key}
               url={item.url}
-              id={item.id!}
+              id={key}
               type={item.type}
-              isSelected={selectedItems.has(key)}
+              isSelected={selectedItems.includes(key)}
               selectionMode={selectionMode}
               isLandscape={landscapeItems[key] ?? false}
               baseUrl={BASE_URL}

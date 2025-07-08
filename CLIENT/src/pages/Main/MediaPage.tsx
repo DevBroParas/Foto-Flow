@@ -1,8 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { getAllMedia, moveManyToBinApi } from "../../service/MediaService";
-import { Trash2, X, ArrowLeft, ArrowRight } from "lucide-react";
+import { getAllMedia } from "../../service/MediaService";
 import FullscreenViewer from "@/components/FullscreenViewer";
 import MediaGridItem from "@/components/MediaGridItem";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import {
+  setCurrentTab,
+  setMediaNeedsRefresh,
+  toggleSelectedItem,
+} from "@/app/selectionSlice";
+
+const BASE_URL = import.meta.env.VITE_API_URL?.replace(
+  /\/api\/?$/,
+  ""
+) as string;
 
 type Media = {
   id: string | null;
@@ -16,33 +26,53 @@ type Media = {
   createdAt: string;
 };
 
-const BASE_URL = import.meta.env.VITE_API_URL?.replace(
-  /\/api\/?$/,
-  ""
-) as string;
-
 const MediaPage = () => {
   const [media, setMedia] = useState<Media[]>([]);
+
   const [landscapeItems, setLandscapeItems] = useState<Record<string, boolean>>(
     {}
   );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const mediaNeedsRefresh = useAppSelector(
+    (state) => state.selection.mediaNeedsRefresh
+  );
+
+  const dispatch = useAppDispatch();
+  const selectionMode = useAppSelector(
+    (state) => state.selection.selectionMode
+  );
+  const selectedItems = useAppSelector(
+    (state) => state.selection.selectedItems
+  );
 
   useEffect(() => {
-    const fetchMedia = async () => {
-      try {
-        const response = await getAllMedia();
-        if (response?.data?.media) {
-          setMedia(response.data.media.reverse());
-        }
-      } catch (error) {
-        console.error("Error fetching media:", error);
+    dispatch(setCurrentTab("media"));
+  }, [dispatch]);
+
+  // ✅ Define fetchMedia outside useEffect
+  const fetchMedia = async () => {
+    try {
+      const response = await getAllMedia();
+      if (response?.data?.media) {
+        setMedia(response.data.media.reverse());
       }
-    };
-    fetchMedia();
-  }, []);
+    } catch (error) {
+      console.error("Error fetching media:", error);
+    }
+  };
+
+  useEffect(() => {
+    dispatch(setCurrentTab("media"));
+    fetchMedia(); // initial load
+  }, [dispatch]);
+
+  // ✅ Refresh when redux flag says to
+  useEffect(() => {
+    if (mediaNeedsRefresh) {
+      fetchMedia();
+      dispatch(setMediaNeedsRefresh(false));
+    }
+  }, [mediaNeedsRefresh, dispatch]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -53,6 +83,8 @@ const MediaPage = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedIndex]);
+
+  // Watch for Redux action completion if needed or trigger refetch manually.
 
   const handleImageLoad = (
     e: React.SyntheticEvent<HTMLImageElement>,
@@ -85,25 +117,7 @@ const MediaPage = () => {
   };
 
   const toggleSelectItem = (id: string) => {
-    setSelectedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) newSet.delete(id);
-      else newSet.add(id);
-      return newSet;
-    });
-  };
-
-  const handleMoveSelectedToBin = async () => {
-    try {
-      const ids = Array.from(selectedItems);
-      if (!ids.length) return;
-      await moveManyToBinApi(ids);
-      setMedia((prev) => prev.filter((m) => !selectedItems.has(m.id!)));
-      setSelectedItems(new Set());
-      setSelectionMode(false);
-    } catch (err) {
-      console.error("Failed to move selected items to bin", err);
-    }
+    dispatch(toggleSelectedItem(id));
   };
 
   return (
@@ -112,97 +126,19 @@ const MediaPage = () => {
         <h2 className="text-3xl font-semibold tracking-tight text-gray-800">
           📷 Media Gallery
         </h2>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              setSelectionMode((prev) => !prev);
-              if (selectionMode) setSelectedItems(new Set());
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
-              selectionMode
-                ? "bg-red-600 hover:bg-red-700 text-white"
-                : "bg-blue-600 hover:bg-blue-700 text-white"
-            }`}
-          >
-            {selectionMode ? <X size={20} /> : <Trash2 size={20} />}
-            {selectionMode ? "Cancel Selection" : "Select Media"}
-          </button>
-
-          {selectionMode && selectedItems.size > 0 && (
-            <button
-              onClick={handleMoveSelectedToBin}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium"
-            >
-              <Trash2 size={20} />
-              Move to Bin ({selectedItems.size})
-            </button>
-          )}
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-        {/* {media.map((item, index) => {
-          const key = item.id || item.url;
-          const isLandscape = landscapeItems[key] ?? false;
-          const isSelected = selectedItems.has(key);
-
-          return (
-            <div
-              key={key}
-              onClick={() =>
-                selectionMode ? toggleSelectItem(key) : setSelectedIndex(index)
-              }
-              className={`relative cursor-pointer overflow-hidden bg-white flex items-center justify-center border-4 transition-all duration-200 ${
-                isLandscape ? "md:col-span-2" : ""
-              } ${
-                selectionMode && isSelected
-                  ? "border-blue-500"
-                  : "border-transparent"
-              }`}
-            >
-              {selectionMode && (
-                <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    readOnly
-                    className="w-5 h-5 accent-blue-600"
-                  />
-                </div>
-              )}
-
-              {item.type === "PHOTO" ? (
-                <img
-                  src={`${BASE_URL}${item.url}`}
-                  alt={`Media ${item.id}`}
-                  className="max-h-[400px] w-full object-contain"
-                  onLoad={(e) => handleImageLoad(e, item.id)}
-                  loading="lazy"
-                />
-              ) : (
-                <video
-                  src={`${BASE_URL}${item.url}`}
-                  className="max-h-[400px] w-full object-contain"
-                  muted
-                  loop
-                  autoPlay
-                  playsInline
-                  onLoadedMetadata={(e) => handleVideoMetadata(e, item.id)}
-                />
-              )}
-            </div>
-          );
-        })} */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-5">
         {media.map((item, index) => {
-          const key = item.id || item.url;
+          const key: string = item.id ?? item.url;
+
           return (
             <MediaGridItem
               key={key}
               url={item.url}
-              id={item.id!}
+              id={key}
               type={item.type}
-              isSelected={selectedItems.has(key)}
+              isSelected={selectedItems.includes(key)}
               selectionMode={selectionMode}
               isLandscape={landscapeItems[key] ?? false}
               baseUrl={BASE_URL}

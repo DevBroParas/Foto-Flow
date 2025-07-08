@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import { getAllPerson } from "@/service/PersonService";
 import FullscreenViewer from "@/components/FullscreenViewer";
 import MediaGridItem from "@/components/MediaGridItem";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { setSelectedPersonId, setCurrentTab } from "@/app/selectionSlice";
 
 const BASE_URL = import.meta.env.VITE_API_URL?.replace(
   /\/api\/?$/,
@@ -25,14 +27,21 @@ type Person = {
 };
 
 const PeoplePage = () => {
+  const dispatch = useAppDispatch();
+  const selectedPersonId = useAppSelector(
+    (state) => state.selection.selectedPersonId
+  );
+
   const [people, setPeople] = useState<Person[]>([]);
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [landscapeItems, setLandscapeItems] = useState<Record<string, boolean>>(
     {}
   );
 
+  const selectedPerson = people.find((p) => p.id === selectedPersonId) || null;
+
   useEffect(() => {
+    dispatch(setCurrentTab("people"));
     const fetchPeople = async () => {
       try {
         const res = await getAllPerson();
@@ -42,7 +51,7 @@ const PeoplePage = () => {
       }
     };
     fetchPeople();
-  }, []);
+  }, [dispatch]);
 
   const closePreview = () => setSelectedIndex(null);
 
@@ -71,9 +80,6 @@ const PeoplePage = () => {
     return () => window.removeEventListener("keydown", handleKey);
   }, [selectedIndex, showPrev, showNext]);
 
-  const handleBack = () => setSelectedPerson(null);
-
-  // ✅ Convert selectedPerson.faces[] into generic media format
   const personMediaList =
     selectedPerson?.faces.map((face) => ({
       id: face.media.id,
@@ -96,42 +102,17 @@ const PeoplePage = () => {
         <h1 className="text-3xl font-bold text-gray-800">🧑 People</h1>
       </div>
 
-      {/* Detail View */}
       {selectedPerson ? (
-        <div>
-          <button
-            onClick={handleBack}
-            className="mb-4 text-sm text-blue-600 hover:underline"
-          >
-            ← Back to People
-          </button>
+        <>
           <h2 className="text-xl font-semibold mb-4">
             {selectedPerson.name || "Unknown"}
           </h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-5">
             {selectedPerson.faces.map((face, index) => {
               const { media } = face;
-              const aspectRatio = media.width / media.height;
-              const isPortrait = aspectRatio < 1;
 
               return (
-                // <div
-                //   key={face.id}
-                //   className={`relative w-full cursor-pointer overflow-hidden ${
-                //     isPortrait ? "row-span-2" : "col-span-2"
-                //   }`}
-                //   onClick={() => setSelectedIndex(index)}
-                // >
-                //   <img
-                //     src={BASE_URL + media.url}
-                //     alt="face"
-                //     className="w-full h-full object-cover rounded-xl"
-                //     style={{
-                //       aspectRatio: `${media.width}/${media.height}`,
-                //     }}
-                //   />
-                // </div>
                 <MediaGridItem
                   key={face.id}
                   url={media.url}
@@ -147,9 +128,8 @@ const PeoplePage = () => {
               );
             })}
           </div>
-        </div>
+        </>
       ) : (
-        // People Grid
         <>
           {people.length === 0 ? (
             <div className="w-full h-60 bg-gray-100 rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-500">
@@ -162,7 +142,7 @@ const PeoplePage = () => {
                 return (
                   <div
                     key={person.id}
-                    onClick={() => setSelectedPerson(person)}
+                    onClick={() => dispatch(setSelectedPersonId(person.id))}
                     className="cursor-pointer group"
                   >
                     <div className="aspect-square overflow-hidden rounded-xl bg-gray-200">

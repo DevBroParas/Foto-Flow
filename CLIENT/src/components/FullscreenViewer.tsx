@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 
 interface FullscreenViewerProps {
@@ -24,38 +24,80 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({
 }) => {
   const selected = media[selectedIndex];
 
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current !== null && touchEndX.current !== null) {
+      const deltaX = touchStartX.current - touchEndX.current;
+
+      // Swipe threshold: Adjust as needed
+      if (deltaX > 50) {
+        onNext(); // swipe left
+      } else if (deltaX < -50) {
+        onPrev(); // swipe right
+      }
+    }
+
+    // Reset
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-6">
+    <div
+      className="fixed inset-0 z-50 bg-black flex items-center justify-center sm:p-6 p-0"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Close Button */}
       <button
         onClick={onClose}
-        className="absolute top-6 right-8 text-white text-4xl font-bold hover:text-red-400 transition"
+        className="absolute top-4 right-4 sm:top-6 sm:right-8 text-white hover:text-red-400 transition"
+        aria-label="Close"
       >
-        <X size={32} />
-      </button>
-      <button
-        onClick={onPrev}
-        className="absolute left-6 text-white text-4xl font-bold hover:text-blue-300"
-      >
-        <ArrowLeft size={32} />
-      </button>
-      <button
-        onClick={onNext}
-        className="absolute right-6 text-white text-4xl font-bold hover:text-blue-300"
-      >
-        <ArrowRight size={32} />
+        <X size={28} className="sm:size-8" />
       </button>
 
-      <div className="max-h-screen max-w-screen flex items-center justify-center rounded-lg overflow-hidden">
+      {/* Prev Button */}
+      <button
+        onClick={onPrev}
+        className="absolute left-3 sm:left-6 text-white hover:text-blue-300 transition"
+        aria-label="Previous"
+      >
+        <ArrowLeft size={28} className="sm:size-8" />
+      </button>
+
+      {/* Next Button */}
+      <button
+        onClick={onNext}
+        className="absolute right-3 sm:right-6 text-white hover:text-blue-300 transition"
+        aria-label="Next"
+      >
+        <ArrowRight size={28} className="sm:size-8" />
+      </button>
+
+      {/* Media */}
+      <div className="w-full h-full sm:max-h-screen sm:max-w-screen flex items-center justify-center overflow-hidden">
         {selected.type === "PHOTO" ? (
           <img
             src={`${baseUrl}${selected.url}`}
             alt="Full view"
-            className="max-h-[90vh] max-w-[90vw] object-contain"
+            className="object-contain w-full h-full sm:max-h-[90vh] sm:max-w-[90vw]"
           />
         ) : (
           <video
             src={`${baseUrl}${selected.url}`}
-            className="max-h-[90vh] max-w-[90vw] object-contain"
+            className="object-contain w-full h-full sm:max-h-[90vh] sm:max-w-[90vw]"
             controls
             autoPlay
           />

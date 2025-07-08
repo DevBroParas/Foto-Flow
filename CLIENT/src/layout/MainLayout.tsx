@@ -8,7 +8,7 @@ const MainLayout = () => {
     <SidebarProvider>
       <div className="flex min-h-screen w-screen overflow-hidden">
         {/* Sidebar */}
-        <div className="w-64 shrink-0">
+        <div className="hidden md:block w-64 shrink-0">
           <AppSidebar />
         </div>
 

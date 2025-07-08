@@ -8,6 +8,8 @@ import {
 import { getAllMedia } from "@/service/MediaService";
 import MediaGridItem from "@/components/MediaGridItem";
 import FullscreenViewer from "@/components/FullscreenViewer";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { setCurrentTab, setSelectedAlbumId } from "@/app/selectionSlice";
 
 const BASE_URL = import.meta.env.VITE_API_URL?.replace(
   /\/api\/?$/,
@@ -31,8 +33,11 @@ interface Album {
 }
 
 const AlbumPage = () => {
+  const dispatch = useAppDispatch();
+  const selectedAlbumId = useAppSelector(
+    (state) => state.selection.selectedAlbumId
+  );
   const [albums, setAlbums] = useState<Album[]>([]);
-  const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [editAlbum, setEditAlbum] = useState<Album | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -48,30 +53,38 @@ const AlbumPage = () => {
   );
   const menuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  const selectedAlbum = selectedAlbumId
+    ? albums.find((album) => album.id === selectedAlbumId) || null
+    : null;
+
   useEffect(() => {
-    const fetchAlbum = async () => {
+    const fetchAlbums = async () => {
       try {
-        const response = await getAllAlbum();
-        if (response?.data?.albums) setAlbums(response.data.albums);
-      } catch (error) {
-        console.error("Error fetching albums:", error);
+        const res = await getAllAlbum();
+        if (res?.data?.albums) setAlbums(res.data.albums);
+      } catch (err) {
+        console.error("Error fetching albums:", err);
       }
     };
-    fetchAlbum();
+    fetchAlbums();
   }, []);
 
   useEffect(() => {
     if (!createMode) return;
     const fetchMedia = async () => {
       try {
-        const response = await getAllMedia();
-        if (response?.data?.media) setMedia(response.data.media);
-      } catch (error) {
-        console.error("Error fetching media:", error);
+        const res = await getAllMedia();
+        if (res?.data?.media) setMedia(res.data.media);
+      } catch (err) {
+        console.error("Error fetching media:", err);
       }
     };
     fetchMedia();
   }, [createMode]);
+
+  useEffect(() => {
+    dispatch(setCurrentTab("album"));
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -121,8 +134,7 @@ const AlbumPage = () => {
   const toggleMedia = (id: string) => {
     setSelectedMedia((prev) => {
       const updated = new Set(prev);
-      if (updated.has(id)) updated.delete(id);
-      else updated.add(id);
+      updated.has(id) ? updated.delete(id) : updated.add(id);
       return updated;
     });
   };
@@ -280,15 +292,8 @@ const AlbumPage = () => {
 
       {selectedAlbum ? (
         <>
-          <button
-            className="mb-4 text-blue-600 underline"
-            onClick={() => setSelectedAlbum(null)}
-          >
-            ← Back to Albums
-          </button>
           <h2 className="text-2xl font-bold mb-2">{selectedAlbum.title}</h2>
           <p className="text-gray-600 mb-4">{selectedAlbum.description}</p>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {selectedAlbum.media.map((item, index) => {
               const key = item.id || item.url;
@@ -327,7 +332,7 @@ const AlbumPage = () => {
             <div key={item.id} className="group relative">
               <div
                 className="aspect-square w-full rounded-2xl overflow-hidden shadow-md cursor-pointer"
-                onClick={() => setSelectedAlbum(item)}
+                onClick={() => dispatch(setSelectedAlbumId(item.id))}
               >
                 {item.media.length > 0 ? (
                   item.media[0].type === "PHOTO" ? (

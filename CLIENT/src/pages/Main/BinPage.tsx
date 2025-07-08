@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
-import {
-  getAllBin,
-  deleteManyPermanentlyApi,
-  restoreMediaApi,
-} from "@/service/BinService";
+import { getAllBin } from "@/service/BinService";
 import FullscreenViewer from "@/components/FullscreenViewer";
 import MediaGridItem from "@/components/MediaGridItem";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import {
+  toggleSelectedItem,
+  setCurrentTab,
+  setMediaNeedsRefresh,
+} from "@/app/selectionSlice";
 
 const BASE_URL = import.meta.env.VITE_API_URL?.replace(
   /\/api\/?$/,
@@ -30,20 +32,42 @@ const BinPage = () => {
     {}
   );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const mediaNeedsRefresh = useAppSelector(
+    (state) => state.selection.mediaNeedsRefresh
+  );
+
+  const dispatch = useAppDispatch();
+  const { selectionMode, selectedItems } = useAppSelector(
+    (state) => state.selection
+  );
 
   useEffect(() => {
-    const fetchMedia = async () => {
-      try {
-        const response = await getAllBin();
-        if (response?.data?.media) {
-          setMedia(response.data.media.reverse());
-        }
-      } catch (error) {
-        console.error("Error fetching media:", error);
+    dispatch(setCurrentTab("bin"));
+  }, [dispatch]);
+
+  const fetchMedia = async () => {
+    try {
+      const response = await getAllBin();
+      if (response?.data?.media) {
+        setMedia(response.data.media.reverse());
       }
+    } catch (error) {
+      console.error("Error fetching bin media:", error);
+    }
+  };
+
+  useEffect(() => {
+    const checkAndRefresh = async () => {
+      await fetchMedia();
+      dispatch(setMediaNeedsRefresh(false));
     };
+
+    if (mediaNeedsRefresh) {
+      checkAndRefresh();
+    }
+  }, [mediaNeedsRefresh, dispatch]);
+
+  useEffect(() => {
     fetchMedia();
   }, []);
 
@@ -92,79 +116,18 @@ const BinPage = () => {
   };
 
   const toggleSelectItem = (id: string) => {
-    setSelectedItems((prev) => {
-      const newSet = new Set(prev);
-      newSet.has(id) ? newSet.delete(id) : newSet.add(id);
-      return newSet;
-    });
-  };
-
-  const handleDeleteSelected = async () => {
-    try {
-      const ids = Array.from(selectedItems).filter(Boolean);
-      if (!ids.length) return;
-      await deleteManyPermanentlyApi(ids);
-      setMedia((prev) => prev.filter((m) => !selectedItems.has(m.id!)));
-      setSelectedItems(new Set());
-      setSelectionMode(false);
-    } catch (err) {
-      console.error("Failed to delete selected items", err);
-    }
-  };
-
-  const handleRestoreSelected = async () => {
-    try {
-      const ids = Array.from(selectedItems).filter(Boolean);
-      if (!ids.length) return;
-      await restoreMediaApi(ids);
-      setMedia((prev) => prev.filter((m) => !selectedItems.has(m.id!)));
-      setSelectedItems(new Set());
-      setSelectionMode(false);
-    } catch (err) {
-      console.error("Failed to restore selected items", err);
-    }
+    dispatch(toggleSelectedItem(id));
   };
 
   return (
     <div className="p-4 w-full flex flex-col min-h-screen">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Bin</h2>
-
-        <div className="flex items-center gap-4">
-          <button
-            className={
-              selectionMode
-                ? "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                : "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            }
-            onClick={() => {
-              setSelectionMode((prev) => !prev);
-              if (selectionMode) setSelectedItems(new Set());
-            }}
-          >
-            {selectionMode ? "Cancel Selection" : "Select Media"}
-          </button>
-
-          {selectionMode && selectedItems.size > 0 && (
-            <>
-              <span className="text-lg font-medium">
-                {selectedItems.size} selected
-              </span>
-              <button
-                onClick={handleRestoreSelected}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-              >
-                Restore Media
-              </button>
-              <button
-                onClick={handleDeleteSelected}
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-              >
-                Delete Permanently
-              </button>
-            </>
-          )}
-        </div>
+        {selectionMode && selectedItems.length > 0 && (
+          <span className="text-gray-700 text-md font-medium">
+            {selectedItems.length} selected
+          </span>
+        )}
       </div>
 
       {/* Media Grid */}
@@ -173,12 +136,10 @@ const BinPage = () => {
           No file in bin
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-5">
           {media.map((item, index) => {
             const key = item.id || item.url;
             if (!key) return null;
-            const isLandscape = landscapeItems[key] ?? false;
-            const isSelected = selectedItems.has(key);
 
             return (
               <MediaGridItem
@@ -186,7 +147,7 @@ const BinPage = () => {
                 url={item.url}
                 id={item.id!}
                 type={item.type}
-                isSelected={selectedItems.has(key)}
+                isSelected={selectedItems.includes(key)}
                 selectionMode={selectionMode}
                 isLandscape={landscapeItems[key] ?? false}
                 baseUrl={BASE_URL}

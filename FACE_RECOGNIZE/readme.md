@@ -70,7 +70,7 @@ pip install -r requirements.txt
 
 4. **Run FastAPI App**  
    ```bash
-   uvicorn main:app --reload --host 0.0.0.0 --port 8001
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
    ```
 
 
