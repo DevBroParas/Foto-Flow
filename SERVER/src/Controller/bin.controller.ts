@@ -84,6 +84,7 @@ export const deleteManyPermanently = async (
       return;
     }
 
+    // Step 1: Get all matching media items for the user
     const mediaItems = await Prisma.media.findMany({
       where: {
         id: { in: ids },
@@ -91,9 +92,19 @@ export const deleteManyPermanently = async (
       },
     });
 
+    // Step 2: Delete related RecognizedFace entries first
+    await Prisma.recognizedFace.deleteMany({
+      where: {
+        mediaId: {
+          in: ids,
+        },
+      },
+    });
+
+    // Step 3: Delete physical media files
     mediaItems.forEach((media) => {
       try {
-        const filePath = path.join(__dirname, "..", "uploads", media.url); // or media.fileName
+        const filePath = path.join(__dirname, "..", "uploads", media.url);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
@@ -102,6 +113,7 @@ export const deleteManyPermanently = async (
       }
     });
 
+    // Step 4: Delete the media entries
     await Prisma.media.deleteMany({
       where: {
         id: { in: ids },
