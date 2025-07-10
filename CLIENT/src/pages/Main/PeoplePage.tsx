@@ -5,7 +5,10 @@ import MediaGridItem from "@/components/MediaGridItem";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { setSelectedPersonId, setCurrentTab } from "@/app/selectionSlice";
 
-const BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") as string;
+const BASE_URL = import.meta.env.VITE_API_URL?.replace(
+  /\/api\/?$/,
+  ""
+) as string;
 
 type BoundingBox = {
   top: number;
@@ -22,6 +25,7 @@ type Face = {
     url: string;
     width: number;
     height: number;
+    deletedAt: string | null;
   };
 };
 
@@ -33,15 +37,21 @@ type Person = {
 
 const PeoplePage = () => {
   const dispatch = useAppDispatch();
-  const selectedPersonId = useAppSelector((state) => state.selection.selectedPersonId);
+  const selectedPersonId = useAppSelector(
+    (state) => state.selection.selectedPersonId
+  );
   const [people, setPeople] = useState<Person[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [landscapeItems, setLandscapeItems] = useState<Record<string, boolean>>({});
-
+  const [landscapeItems, setLandscapeItems] = useState<Record<string, boolean>>(
+    {}
+  );
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
 
   const selectedPerson = people.find((p) => p.id === selectedPersonId) || null;
+
+  const visibleFaces =
+    selectedPerson?.faces.filter((face) => !face.media.deletedAt) ?? [];
 
   const fetchPeople = async () => {
     try {
@@ -66,18 +76,18 @@ const PeoplePage = () => {
   const closePreview = () => setSelectedIndex(null);
 
   const showPrev = useCallback(() => {
-    if (selectedPerson && selectedIndex !== null) {
+    if (visibleFaces.length && selectedIndex !== null) {
       setSelectedIndex((prev) => (prev! > 0 ? prev! - 1 : prev));
     }
-  }, [selectedIndex, selectedPerson]);
+  }, [selectedIndex, visibleFaces]);
 
   const showNext = useCallback(() => {
-    if (selectedPerson && selectedIndex !== null) {
+    if (visibleFaces.length && selectedIndex !== null) {
       setSelectedIndex((prev) =>
-        prev! < selectedPerson.faces.length - 1 ? prev! + 1 : prev
+        prev! < visibleFaces.length - 1 ? prev! + 1 : prev
       );
     }
-  }, [selectedIndex, selectedPerson]);
+  }, [selectedIndex, visibleFaces]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -90,12 +100,11 @@ const PeoplePage = () => {
     return () => window.removeEventListener("keydown", handleKey);
   }, [selectedIndex, showPrev, showNext]);
 
-  const personMediaList =
-    selectedPerson?.faces.map((face) => ({
-      id: face.media.id,
-      type: "PHOTO" as const,
-      url: face.media.url,
-    })) ?? [];
+  const personMediaList = visibleFaces.map((face) => ({
+    id: face.media.id,
+    type: "PHOTO" as const,
+    url: face.media.url,
+  }));
 
   const handleImageLoad = (
     e: React.SyntheticEvent<HTMLImageElement>,
@@ -112,7 +121,7 @@ const PeoplePage = () => {
     try {
       if (!selectedPerson) return;
       await updatePerson(selectedPerson.id, { name: newName });
-      await fetchPeople(); // Refresh
+      await fetchPeople();
       setEditingName(false);
     } catch (err) {
       console.error("Failed to update name", err);
@@ -165,7 +174,7 @@ const PeoplePage = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-5">
-            {selectedPerson.faces.map((face, index) => {
+            {visibleFaces.map((face, index) => {
               const { media } = face;
               return (
                 <MediaGridItem
@@ -186,48 +195,53 @@ const PeoplePage = () => {
         </>
       ) : (
         <>
-          {people.length === 0 ? (
+          {people.filter((p) => p.faces.some((f) => !f.media.deletedAt))
+            .length === 0 ? (
             <div className="w-full h-60 bg-gray-100 rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-500">
               No people detected yet.
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {people.map((person) => {
-                const face = person.faces[0];
-                const imageUrl = face?.media?.url;
-                const box = face?.boundingBox;
-                const width = face?.media?.width ?? 512;
-                const height = face?.media?.height ?? 512;
+              {people
+                .filter((person) =>
+                  person.faces.some((face) => !face.media.deletedAt)
+                )
+                .map((person) => {
+                  const face = person.faces.find((f) => !f.media.deletedAt);
+                  if (!face) return null;
 
-                if (!imageUrl || !box) return null;
+                  const imageUrl = face.media.url;
+                  const box = face.boundingBox;
+                  const width = face.media.width ?? 512;
+                  const height = face.media.height ?? 512;
 
-                const centerX = (box.left + box.right) / 2;
-                const centerY = (box.top + box.bottom) / 2;
-                const xPercent = (centerX / width) * 100;
-                const yPercent = (centerY / height) * 100;
+                  const centerX = (box.left + box.right) / 2;
+                  const centerY = (box.top + box.bottom) / 2;
+                  const xPercent = (centerX / width) * 100;
+                  const yPercent = (centerY / height) * 100;
 
-                return (
-                  <div
-                    key={person.id}
-                    onClick={() => dispatch(setSelectedPersonId(person.id))}
-                    className="cursor-pointer group"
-                  >
-                    <div className="aspect-square overflow-hidden rounded-xl bg-gray-200 relative">
-                      <img
-                        src={BASE_URL + imageUrl}
-                        alt="face"
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                        style={{
-                          objectPosition: `${xPercent}% ${yPercent}%`,
-                        }}
-                      />
+                  return (
+                    <div
+                      key={person.id}
+                      onClick={() => dispatch(setSelectedPersonId(person.id))}
+                      className="cursor-pointer group"
+                    >
+                      <div className="aspect-square overflow-hidden rounded-xl bg-gray-200 relative">
+                        <img
+                          src={BASE_URL + imageUrl}
+                          alt="face"
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          style={{
+                            objectPosition: `${xPercent}% ${yPercent}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="mt-2 text-center text-sm font-medium text-gray-800">
+                        {person.name || "Unknown"}
+                      </p>
                     </div>
-                    <p className="mt-2 text-center text-sm font-medium text-gray-800">
-                      {person.name || "Unknown"}
-                    </p>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </>
