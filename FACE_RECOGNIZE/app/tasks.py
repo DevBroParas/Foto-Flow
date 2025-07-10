@@ -43,16 +43,22 @@ def recognize_faces(self, media_id: str, filename: str):
             logger.error(f"File not found: {file_path}")
             return
 
+        # Get original image size
+        with Image.open(file_path) as img:
+            original_width, original_height = img.size
+
         image = resize_image(file_path)
         logger.info(f"Image resized and loaded for {filename}")
-        # you can use cnn for accuracy and hog for speed on low end device
+
         locations = face_recognition.face_locations(image, model="hog")
         if not locations:
             logger.info(f"No faces found in {filename}. Sending empty response.")
             requests.post(BACKEND_URL + "/recognize/internal", json={
                 "mediaId": media_id,
                 "matches": [],
-                "newPersons": []
+                "newPersons": [],
+                "width": original_width,
+                "height": original_height
             })
             return
 
@@ -62,7 +68,9 @@ def recognize_faces(self, media_id: str, filename: str):
             requests.post(BACKEND_URL + "/recognize/internal", json={
                 "mediaId": media_id,
                 "matches": [],
-                "newPersons": []
+                "newPersons": [],
+                "width": original_width,
+                "height": original_height
             })
             return
 
@@ -109,17 +117,22 @@ def recognize_faces(self, media_id: str, filename: str):
 
             matches.append({
                 "personId": found,
-                "boundingBox": {"top": top, "right": right, "bottom": bottom, "left": left},
+                "boundingBox": {
+                    "top": top,
+                    "right": right,
+                    "bottom": bottom,
+                    "left": left
+                },
                 "isPotentialMatch": is_potential
             })
 
         resp = requests.post(BACKEND_URL + "/recognize/internal", json={
             "mediaId": media_id,
             "matches": matches,
-            "newPersons": new_persons
-        },
-        timeout=10 # Set timeout to 10 seconds
-        )
+            "newPersons": new_persons,
+            "width": original_width,
+            "height": original_height
+        }, timeout=10)
 
         logger.info(f"Recognition results sent for mediaId {media_id} with status code {resp.status_code}")
         return True

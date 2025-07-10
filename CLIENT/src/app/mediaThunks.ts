@@ -1,5 +1,9 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { moveManyToBinApi } from "@/service/MediaService";
+import {
+  moveManyToBinApi,
+  downloadMultipleMediaApi,
+} from "@/service/MediaService";
+
 import {
   clearSelectedItems,
   setMediaNeedsRefresh,
@@ -37,6 +41,19 @@ export const deleteSelectedBinMedia = createAsyncThunk(
     dispatch(clearSelectedItems());
   }
 );
+
+export const downloadSelectedMedia = createAsyncThunk<
+  void,
+  string[],
+  { rejectValue: string }
+>("media/downloadSelectedMedia", async (mediaIds, { rejectWithValue }) => {
+  try {
+    await downloadMultipleMediaApi(mediaIds);
+  } catch (error) {
+    console.error("Download failed", error);
+    return rejectWithValue("Failed to download media");
+  }
+});
 
 export const restoreSelectedBinMedia = createAsyncThunk(
   "bin/restoreSelected",

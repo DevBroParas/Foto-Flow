@@ -42,6 +42,8 @@ model Media {
   takenAt           DateTime?
   recognitionStatus RecognitionStatus @default(PENDING)
   recognizedFaces   RecognizedFace[]
+  width             Int?
+  height            Int?
   createdAt         DateTime          @default(now())
   deletedAt         DateTime?
 

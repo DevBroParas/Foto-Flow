@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { downloadSelectedMedia } from "@/app/mediaThunks";
+import { Download as DownloadIcon } from "lucide-react";
+
 import {
   Trash2,
   X,
@@ -105,14 +108,26 @@ const Navbar = () => {
             {selectionMode &&
               selectedCount > 0 &&
               ["media", "photo", "video"].includes(currentTab) && (
-                <Button
-                  onClick={handleMoveToBin}
-                  variant="destructive"
-                  className="text-white hover:text-red-300"
-                >
-                  <Trash2 size={20} />
-                  Move to Bin ({selectedCount})
-                </Button>
+                <>
+                  <Button
+                    onClick={handleMoveToBin}
+                    variant="destructive"
+                    className="text-white hover:text-red-300"
+                  >
+                    <Trash2 size={20} />
+                    Move to Bin ({selectedCount})
+                  </Button>
+
+                  <Button
+                    onClick={() =>
+                      dispatch(downloadSelectedMedia(selectedItems))
+                    }
+                    className="bg-blue-700 text-white hover:bg-blue-800"
+                  >
+                    <DownloadIcon size={20} />
+                    Download ({selectedCount})
+                  </Button>
+                </>
               )}
 
             {selectionMode && selectedCount > 0 && currentTab === "bin" && (

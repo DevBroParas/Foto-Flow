@@ -328,84 +328,92 @@ const AlbumPage = () => {
         </>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {albums.map((item) => (
-            <div key={item.id} className="group relative">
-              <div
-                className="aspect-square w-full rounded-2xl overflow-hidden shadow-md cursor-pointer"
-                onClick={() => dispatch(setSelectedAlbumId(item.id))}
-              >
-                {item.media.length > 0 ? (
-                  item.media[0].type === "PHOTO" ? (
-                    <img
-                      src={`${BASE_URL}${item.media[0].url}`}
-                      alt="Cover"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <video
-                      src={`${BASE_URL}${item.media[0].url}`}
-                      className="h-full w-full object-cover"
-                      muted
-                      loop
-                      playsInline
-                    />
-                  )
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-sm text-gray-400">
-                    No Cover Image
-                  </div>
-                )}
-              </div>
-              <div
-                className="absolute top-2 right-2 z-30"
-                ref={(el) => {
-                  menuRefs.current[item.id] = el;
-                }}
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpenId(menuOpenId === item.id ? null : item.id);
-                  }}
-                  className="bg-white/80 hover:bg-white rounded-full p-1"
+          {albums.length === 0 ? (
+            <p className="text-center text-gray-500 col-span-full text-lg">
+              No albums found.
+            </p>
+          ) : (
+            albums.map((item) => (
+              <div key={item.id} className="group relative">
+                <div
+                  className="aspect-square w-full rounded-2xl overflow-hidden shadow-md cursor-pointer"
+                  onClick={() => dispatch(setSelectedAlbumId(item.id))}
                 >
-                  <svg
-                    width="24"
-                    height="24"
-                    fill="currentColor"
-                    className="text-gray-700"
+                  {item.media.length > 0 ? (
+                    item.media[0].type === "PHOTO" ? (
+                      <img
+                        src={`${BASE_URL}${item.media[0].url}`}
+                        alt="Cover"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <video
+                        src={`${BASE_URL}${item.media[0].url}`}
+                        className="h-full w-full object-cover"
+                        muted
+                        loop
+                        playsInline
+                      />
+                    )
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-sm text-gray-400">
+                      No Cover Image
+                    </div>
+                  )}
+                </div>
+                <div
+                  className="absolute top-2 right-2 z-30"
+                  ref={(el) => {
+                    menuRefs.current[item.id] = el;
+                  }}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpenId(menuOpenId === item.id ? null : item.id);
+                    }}
+                    className="bg-white/80 hover:bg-white rounded-full p-1"
                   >
-                    <circle cx="12" cy="5" r="2" />
-                    <circle cx="12" cy="12" r="2" />
-                    <circle cx="12" cy="19" r="2" />
-                  </svg>
-                </button>
-                {menuOpenId === item.id && (
-                  <div
-                    className="absolute right-0 mt-2 w-32 bg-white border rounded shadow z-40"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                      onClick={() => handleEditClick(item)}
+                    <svg
+                      width="24"
+                      height="24"
+                      fill="currentColor"
+                      className="text-gray-700"
                     >
-                      Edit
-                    </button>
-                    <button
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                      onClick={() => handleDeleteAlbum(item.id)}
+                      <circle cx="12" cy="5" r="2" />
+                      <circle cx="12" cy="12" r="2" />
+                      <circle cx="12" cy="19" r="2" />
+                    </svg>
+                  </button>
+                  {menuOpenId === item.id && (
+                    <div
+                      className="absolute right-0 mt-2 w-32 bg-white border rounded shadow z-40"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      Delete
-                    </button>
-                  </div>
-                )}
+                      <button
+                        className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                        onClick={() => handleEditClick(item)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+                        onClick={() => handleDeleteAlbum(item.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="font-bold uppercase text-gray-700 text-lg mt-2">
+                  {item.title}
+                </p>
+                <p className="text-gray-400 text-sm">
+                  {item.media.length} items
+                </p>
               </div>
-              <p className="font-bold uppercase text-gray-700 text-lg mt-2">
-                {item.title}
-              </p>
-              <p className="text-gray-400 text-sm">{item.media.length} items</p>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
     </div>

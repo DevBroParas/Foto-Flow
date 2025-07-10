@@ -5,6 +5,7 @@ import {
   deleteMedia,
   getMediaById,
   downloadMediaFile,
+  downloadMultipleMedia,
   deleteAllMedia,
   moveToBin,
   moveManyToBin,
@@ -14,26 +15,18 @@ import { upload } from "../Middleware/upload.middleware";
 
 const router = express.Router();
 
-// Route to upload media
 router.post("/upload", protect, upload.array("files", 50), uploadMedia);
-
-// Route to get all media for the logged-in user
 router.get("/", protect, getMedia);
 
-// Route to delete all media for the logged-in user
 router.delete("/delete-all", protect, deleteAllMedia);
-
-// Route to get media by ID
-router.get("/:id", protect, getMediaById);
-
-// Route to download media file by filename
-router.get("/:filename/download", protect, downloadMediaFile);
-
-// Route to delete media by ID
-router.delete("/:id", protect, deleteMedia);
-
-router.patch("/:id/bin", protect, moveToBin);
+router.post("/download-multiple", protect, downloadMultipleMedia);
 
 router.patch("/move-to-bin", protect, moveManyToBin);
+router.delete("/delete-selected", protect, deleteMedia);
+
+router.get("/:filename/download", protect, downloadMediaFile);
+router.get("/:id", protect, getMediaById);
+router.delete("/:id", protect, deleteMedia);
+router.patch("/:id/bin", protect, moveToBin);
 
 export default router;

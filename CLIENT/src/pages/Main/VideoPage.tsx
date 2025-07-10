@@ -113,28 +113,36 @@ const VideoPage = () => {
         </h2>
       </div>
 
-      <div className="ggrid grid-cols-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-5">
-        {media.map((item, index) => {
-          const key = item.id ?? item.url;
+      {media.length === 0 ? (
+        <div className="text-center col-span-full py-16 text-gray-500 text-xl">
+          No videos found.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-5">
+          {media.map((item, index) => {
+            const key = item.id ?? item.url;
 
-          return (
-            <MediaGridItem
-              key={key}
-              url={item.url}
-              id={key}
-              type={item.type}
-              isSelected={selectedItems.includes(key)}
-              selectionMode={selectionMode}
-              isLandscape={landscapeItems[key] ?? false}
-              baseUrl={BASE_URL}
-              onClick={() =>
-                selectionMode ? toggleSelectItem(key) : setSelectedIndex(index)
-              }
-              onLoadVideo={handleVideoMetadata}
-            />
-          );
-        })}
-      </div>
+            return (
+              <MediaGridItem
+                key={key}
+                url={item.url}
+                id={key}
+                type={item.type}
+                isSelected={selectedItems.includes(key)}
+                selectionMode={selectionMode}
+                isLandscape={landscapeItems[key] ?? false}
+                baseUrl={BASE_URL}
+                onClick={() =>
+                  selectionMode
+                    ? toggleSelectItem(key)
+                    : setSelectedIndex(index)
+                }
+                onLoadVideo={handleVideoMetadata}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {selectedIndex !== null && (
         <FullscreenViewer

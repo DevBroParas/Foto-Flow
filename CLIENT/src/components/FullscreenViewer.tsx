@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 
 interface FullscreenViewerProps {
@@ -22,6 +22,7 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({
   onNext,
   baseUrl,
 }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const selected = media[selectedIndex];
 
   const touchStartX = useRef<number | null>(null);
@@ -38,28 +39,36 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({
   const handleTouchEnd = () => {
     if (touchStartX.current !== null && touchEndX.current !== null) {
       const deltaX = touchStartX.current - touchEndX.current;
-
-      // Swipe threshold: Adjust as needed
-      if (deltaX > 50) {
-        onNext(); // swipe left
-      } else if (deltaX < -50) {
-        onPrev(); // swipe right
-      }
+      if (deltaX > 50) onNext(); // swipe left
+      else if (deltaX < -50) onPrev(); // swipe right
     }
-
-    // Reset
     touchStartX.current = null;
     touchEndX.current = null;
   };
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el && document.fullscreenElement !== el) {
+      el.requestFullscreen?.().catch((err) => {
+        console.warn("Fullscreen failed:", err);
+      });
+    }
+
+    return () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    };
+  }, []);
+
   return (
     <div
+      ref={containerRef}
       className="fixed inset-0 z-50 bg-black flex items-center justify-center sm:p-6 p-0"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Close Button */}
       <button
         onClick={onClose}
         className="absolute top-4 right-4 sm:top-6 sm:right-8 text-white hover:text-red-400 transition"
@@ -68,7 +77,6 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({
         <X size={28} className="sm:size-8" />
       </button>
 
-      {/* Prev Button */}
       <button
         onClick={onPrev}
         className="absolute left-3 sm:left-6 text-white hover:text-blue-300 transition"
@@ -77,7 +85,6 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({
         <ArrowLeft size={28} className="sm:size-8" />
       </button>
 
-      {/* Next Button */}
       <button
         onClick={onNext}
         className="absolute right-3 sm:right-6 text-white hover:text-blue-300 transition"
@@ -86,18 +93,17 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({
         <ArrowRight size={28} className="sm:size-8" />
       </button>
 
-      {/* Media */}
-      <div className="w-full h-full sm:max-h-screen sm:max-w-screen flex items-center justify-center overflow-hidden">
+      <div className="w-full h-full flex items-center justify-center overflow-hidden">
         {selected.type === "PHOTO" ? (
           <img
             src={`${baseUrl}${selected.url}`}
             alt="Full view"
-            className="object-contain w-full h-full sm:max-h-[90vh] sm:max-w-[90vw]"
+            className="object-contain w-full h-full"
           />
         ) : (
           <video
             src={`${baseUrl}${selected.url}`}
-            className="object-contain w-full h-full sm:max-h-[90vh] sm:max-w-[90vw]"
+            className="object-contain w-full h-full"
             controls
             autoPlay
           />

@@ -1,17 +1,22 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { getAllPerson } from "@/service/PersonService";
+import { getAllPerson, updatePerson } from "@/service/PersonService";
 import FullscreenViewer from "@/components/FullscreenViewer";
 import MediaGridItem from "@/components/MediaGridItem";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { setSelectedPersonId, setCurrentTab } from "@/app/selectionSlice";
 
-const BASE_URL = import.meta.env.VITE_API_URL?.replace(
-  /\/api\/?$/,
-  ""
-) as string;
+const BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") as string;
+
+type BoundingBox = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
 
 type Face = {
   id: string;
+  boundingBox: BoundingBox;
   media: {
     id: string;
     url: string;
@@ -28,30 +33,35 @@ type Person = {
 
 const PeoplePage = () => {
   const dispatch = useAppDispatch();
-  const selectedPersonId = useAppSelector(
-    (state) => state.selection.selectedPersonId
-  );
-
+  const selectedPersonId = useAppSelector((state) => state.selection.selectedPersonId);
   const [people, setPeople] = useState<Person[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [landscapeItems, setLandscapeItems] = useState<Record<string, boolean>>(
-    {}
-  );
+  const [landscapeItems, setLandscapeItems] = useState<Record<string, boolean>>({});
+
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const selectedPerson = people.find((p) => p.id === selectedPersonId) || null;
 
+  const fetchPeople = async () => {
+    try {
+      const res = await getAllPerson();
+      setPeople(res.data);
+    } catch (err) {
+      console.error("Failed to fetch people", err);
+    }
+  };
+
   useEffect(() => {
     dispatch(setCurrentTab("people"));
-    const fetchPeople = async () => {
-      try {
-        const res = await getAllPerson();
-        setPeople(res.data);
-      } catch (err) {
-        console.error("Failed to fetch people", err);
-      }
-    };
     fetchPeople();
   }, [dispatch]);
+
+  useEffect(() => {
+    if (selectedPerson) {
+      setNewName(selectedPerson.name || "");
+    }
+  }, [selectedPerson]);
 
   const closePreview = () => setSelectedIndex(null);
 
@@ -92,8 +102,21 @@ const PeoplePage = () => {
     id: string
   ) => {
     const img = e.currentTarget;
-    const isLandscape = img.naturalWidth > img.naturalHeight;
-    setLandscapeItems((prev) => ({ ...prev, [id]: isLandscape }));
+    setLandscapeItems((prev) => ({
+      ...prev,
+      [id]: img.naturalWidth > img.naturalHeight,
+    }));
+  };
+
+  const handleSaveName = async () => {
+    try {
+      if (!selectedPerson) return;
+      await updatePerson(selectedPerson.id, { name: newName });
+      await fetchPeople(); // Refresh
+      setEditingName(false);
+    } catch (err) {
+      console.error("Failed to update name", err);
+    }
   };
 
   return (
@@ -104,14 +127,46 @@ const PeoplePage = () => {
 
       {selectedPerson ? (
         <>
-          <h2 className="text-xl font-semibold mb-4">
-            {selectedPerson.name || "Unknown"}
-          </h2>
+          <div className="mb-4 flex items-center gap-2">
+            {editingName ? (
+              <>
+                <input
+                  type="text"
+                  className="border px-2 py-1 rounded"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
+                <button
+                  className="text-sm px-3 py-1 bg-blue-600 text-white rounded"
+                  onClick={handleSaveName}
+                >
+                  Save
+                </button>
+                <button
+                  className="text-sm px-3 py-1 bg-gray-300 rounded"
+                  onClick={() => setEditingName(false)}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold">
+                  {selectedPerson.name || "Unknown"}
+                </h2>
+                <button
+                  className="text-sm text-blue-600 underline ml-2"
+                  onClick={() => setEditingName(true)}
+                >
+                  Edit
+                </button>
+              </>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-5">
             {selectedPerson.faces.map((face, index) => {
               const { media } = face;
-
               return (
                 <MediaGridItem
                   key={face.id}
@@ -138,25 +193,34 @@ const PeoplePage = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {people.map((person) => {
-                const imageUrl = person.faces[0]?.media?.url;
+                const face = person.faces[0];
+                const imageUrl = face?.media?.url;
+                const box = face?.boundingBox;
+                const width = face?.media?.width ?? 512;
+                const height = face?.media?.height ?? 512;
+
+                if (!imageUrl || !box) return null;
+
+                const centerX = (box.left + box.right) / 2;
+                const centerY = (box.top + box.bottom) / 2;
+                const xPercent = (centerX / width) * 100;
+                const yPercent = (centerY / height) * 100;
+
                 return (
                   <div
                     key={person.id}
                     onClick={() => dispatch(setSelectedPersonId(person.id))}
                     className="cursor-pointer group"
                   >
-                    <div className="aspect-square overflow-hidden rounded-xl bg-gray-200">
-                      {imageUrl ? (
-                        <img
-                          src={BASE_URL + imageUrl}
-                          alt={person.name}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-500">
-                          No Image
-                        </div>
-                      )}
+                    <div className="aspect-square overflow-hidden rounded-xl bg-gray-200 relative">
+                      <img
+                        src={BASE_URL + imageUrl}
+                        alt="face"
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        style={{
+                          objectPosition: `${xPercent}% ${yPercent}%`,
+                        }}
+                      />
                     </div>
                     <p className="mt-2 text-center text-sm font-medium text-gray-800">
                       {person.name || "Unknown"}

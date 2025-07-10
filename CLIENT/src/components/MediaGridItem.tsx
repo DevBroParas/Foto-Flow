@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef, useState } from "react";
+import { Play } from "lucide-react"; // Make sure Lucide is installed
 
 interface MediaItemProps {
   url: string;
@@ -25,9 +26,30 @@ const MediaGridItem: React.FC<MediaItemProps> = ({
   onLoadVideo,
   baseUrl,
 }) => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (videoRef.current) {
+      videoRef.current.load(); // load only on hover
+      videoRef.current.play();
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
   return (
     <div
       onClick={onClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={`relative cursor-pointer overflow-hidden bg-white flex items-center justify-center border-4 transition-all duration-200 ${
         isLandscape ? "md:col-span-2" : ""
       } ${
@@ -54,15 +76,24 @@ const MediaGridItem: React.FC<MediaItemProps> = ({
           loading="lazy"
         />
       ) : (
-        <video
-          src={`${baseUrl}${url}`}
-          className="max-h-[400px] w-full object-contain"
-          muted
-          loop
-          autoPlay
-          playsInline
-          onLoadedMetadata={(e) => onLoadVideo?.(e, id)}
-        />
+        <>
+          <video
+            ref={videoRef}
+            src={`${baseUrl}${url}`}
+            className="max-h-[400px] w-full object-contain"
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            onLoadedMetadata={(e) => onLoadVideo?.(e, id)}
+          />
+
+          {!isHovered && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <Play className="w-10 h-10 text-white drop-shadow-lg" />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

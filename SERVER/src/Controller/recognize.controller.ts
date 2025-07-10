@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -8,14 +8,29 @@ export const getRecognitionStatus = async (
   res: Response
 ): Promise<void> => {
   try {
-    // Support both single item and batch items
-    const items = Array.isArray(req.body.items)
+    // Support both array and single object
+    const items: {
+      mediaId: string;
+      matches: {
+        personId: string;
+        boundingBox: {
+          top: number;
+          right: number;
+          bottom: number;
+          left: number;
+        };
+        encoding?: Prisma.InputJsonValue;
+        similarity?: number;
+        isPotentialMatch?: boolean;
+      }[];
+      newPersons: string[];
+    }[] = Array.isArray(req.body.items)
       ? req.body.items
       : req.body.mediaId
-      ? [req.body] // single item format fallback
-      : null;
+      ? [req.body]
+      : [];
 
-    if (!items) {
+    if (items.length === 0) {
       res.status(400).json({ message: "Invalid request body" });
       return;
     }
@@ -29,7 +44,10 @@ export const getRecognitionStatus = async (
       if (!mediaId) continue;
 
       const media = await prisma.media.findUnique({ where: { id: mediaId } });
-      if (!media) continue;
+      if (!media) {
+        console.warn(`⚠️ Media not found for id: ${mediaId}`);
+        continue;
+      }
 
       // Save new persons
       for (const personId of newPersons) {
@@ -41,46 +59,61 @@ export const getRecognitionStatus = async (
             data: {
               id: personId,
               userId: media.userId,
-              folderPath: `/persons/${personId}`,
               name: "Unknown",
+              folderPath: `/persons/${personId}`,
             },
           });
+          totalNewPersons++;
           console.log(`✅ New person created: ${personId}`);
         }
       }
 
       // Save recognized faces
       for (const match of matches) {
-        const { personId, boundingBox, encoding } = match;
+        const {
+          personId,
+          boundingBox,
+          encoding,
+          similarity,
+          isPotentialMatch,
+        } = match;
+
+        if (!personId || !boundingBox) {
+          console.warn(`⚠️ Skipped face with missing personId or boundingBox`);
+          continue;
+        }
 
         await prisma.recognizedFace.create({
           data: {
-            mediaId: media.id,
+            mediaId,
             personId,
             boundingBox,
-            encoding: encoding || null,
-            similarity: match.similarity || 1,
-            isPotentialMatch: match.isPotentialMatch ?? true,
+            encoding: encoding ? JSON.stringify(encoding) : null,
+            similarity: similarity ?? 1,
+            isPotentialMatch: isPotentialMatch ?? true,
           },
         });
+
+        totalMatches++;
       }
 
       // Update recognition status
       await prisma.media.update({
-        where: { id: media.id },
-        data: { recognitionStatus: "DONE" },
+        where: { id: mediaId },
+        data: {
+          recognitionStatus: "DONE",
+          width: (item as any).width ?? undefined,
+          height: (item as any).height ?? undefined,
+        },
       });
 
-      totalMatches += matches.length;
-      totalNewPersons += newPersons.length;
-
       console.log(
-        `✅ Saved recognition for media ${media.id}: ${matches.length} faces, ${newPersons.length} new persons`
+        `✅ Processed media ${mediaId}: ${matches.length} faces, ${newPersons.length} new persons`
       );
     }
 
     console.log(
-      `✅ Recognition completed. Total matches: ${totalMatches}, new persons: ${totalNewPersons}`
+      `🎉 Recognition complete. Total matches: ${totalMatches}, new persons: ${totalNewPersons}`
     );
 
     res.status(200).json({

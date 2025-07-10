@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from "../Types";
 import path from "path";
 import fs from "fs";
 import axios from "axios";
+import archiver from "archiver";
 
 const Prisma = new PrismaClient();
 
@@ -166,6 +167,65 @@ export const downloadMediaFile = async (
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to download media" });
+  }
+};
+
+export const downloadMultipleMedia = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { ids } = req.body; // Accept media IDs in POST body
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ message: "No media IDs provided" });
+      return;
+    }
+
+    // Fetch media records and validate ownership
+    const mediaItems = await Prisma.media.findMany({
+      where: {
+        id: { in: ids },
+        userId,
+      },
+    });
+
+    if (mediaItems.length === 0) {
+      res.status(404).json({ message: "No valid media found" });
+      return;
+    }
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=media-download.zip`
+    );
+
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    archive.pipe(res);
+
+    for (const media of mediaItems) {
+      const filePath = path.join(
+        __dirname,
+        "..",
+        "uploads",
+        path.basename(media.url)
+      );
+      if (fs.existsSync(filePath)) {
+        archive.file(filePath, { name: path.basename(media.url) });
+      }
+    }
+
+    await archive.finalize();
+  } catch (error) {
+    console.error("Download error:", error);
+    res.status(500).json({ message: "Failed to download media files" });
   }
 };
 

@@ -8,28 +8,40 @@ export const getAllPersons = async (
   req: AuthenticatedRequest,
   res: Response
 ): Promise<void> => {
-  const userId = req.user?.id;
+  try {
+    const userId = req.user?.id;
 
-  const persons = await prisma.person.findMany({
-    where: { userId },
-    include: {
-      faces: {
-        include: {
-          media: true,
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const persons = await prisma.person.findMany({
+      where: { userId },
+      include: {
+        faces: {
+          include: {
+            media: {
+              select: {
+                id: true,
+                url: true,
+                width: true,
+                height: true,
+              },
+            },
+          },
         },
       },
-    },
-  });
+      orderBy: {
+        name: "asc",
+      },
+    });
 
-  const personsWithBoundingBox = persons.map((person) => ({
-    ...person,
-    faces: person.faces.map((face) => ({
-      ...face,
-      boundingBox: face.boundingBox,
-    })),
-  }));
-
-  res.json(persons);
+    res.status(200).json(persons);
+  } catch (error) {
+    console.error("❌ Error fetching persons:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };
 
 export const getPersonById = async (
