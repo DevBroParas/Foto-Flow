@@ -38,6 +38,8 @@ services:
       - ./SERVER/.env
     depends_on:
       - postgres
+    volumes:
+      - uploads-data:/app/dist/uploads
 
   microservice_api:
     build:
@@ -62,5 +64,9 @@ services:
       - redis
     volumes:
       - ./FACE_RECOGNIZE:/app
+      - uploads-data:/server_uploads
     env_file:
       - ./FACE_RECOGNIZE/.env
+
+volumes:
+  uploads-data:
