@@ -3,33 +3,16 @@ FROM node:18 AS builder
 
 WORKDIR /app
 
-# Copy only package files first for better caching
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy rest of the code
 COPY . .
-
-# Build the frontend (output goes to /app/dist)
 RUN npm run build
 
+# -------- Stage 2: Just expose static files (don't run NGINX) --------
+FROM alpine:3.18
 
-# -------- Stage 2: Serve with Nginx --------
-FROM nginx:stable-alpine
+WORKDIR /app
+COPY --from=builder /app/dist /app
 
-# Clean default nginx page
-RUN rm -rf /usr/share/nginx/html/*
-
-# Copy build files from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy custom nginx config (optional, for SPA routing)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
-EXPOSE 80
-
-# Start NGINX
-CMD ["nginx", "-g", "daemon off;"]
+# You don’t expose or CMD anything — main NGINX will handle it
