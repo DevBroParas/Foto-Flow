@@ -1,5 +1,10 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { getProfile, loginUser, logoutUser } from "../service/UserService";
+import {
+  getProfile,
+  loginUser,
+  logoutUser,
+  registerUser,
+} from "../service/UserService";
 import type { User } from "../types/UserTypes";
 type AuthState = {
   user: User | null;
@@ -33,6 +38,24 @@ const login = createAsyncThunk(
   async (credentials: { email: string; password: string }, thunkAPI) => {
     try {
       const res = await loginUser(credentials);
+      if (!res.status) {
+        throw new Error(res.data.message);
+      }
+      return res.data.user;
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(error.message);
+    }
+  }
+);
+
+const register = createAsyncThunk(
+  "auth/register",
+  async (
+    credentials: { name: string; email: string; password: string },
+    thunkAPI
+  ) => {
+    try {
+      const res = await registerUser(credentials);
       if (!res.status) {
         throw new Error(res.data.message);
       }
@@ -81,7 +104,18 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.error = null;
       })
+      .addCase(register.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
       .addCase(login.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload as string;
+        state.isAuthenticated = false;
+      })
+      .addCase(register.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
         state.isAuthenticated = false;
@@ -95,4 +129,4 @@ const authSlice = createSlice({
 });
 
 export default authSlice.reducer;
-export { login, logout, fetchUser };
+export { login, logout, fetchUser,register };

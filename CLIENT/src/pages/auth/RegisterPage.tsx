@@ -1,10 +1,13 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { register } from "@/app/authSlice";
+import { useNavigate } from "react-router-dom";
 
 const RegisterPageSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -16,7 +19,7 @@ type RegisterPageFormData = z.infer<typeof RegisterPageSchema>;
 
 const RegisterPage = () => {
   const {
-    register,
+    register: formRegister, // rename to avoid clash with redux register
     handleSubmit,
     formState: { errors },
   } = useForm<RegisterPageFormData>({
@@ -24,18 +27,20 @@ const RegisterPage = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { error } = useAppSelector((state) => state.auth);
 
   const onSubmit = async (data: RegisterPageFormData) => {
     try {
       setLoading(true);
-      console.log("Submitting:", data);
-
-      await new Promise((res) => setTimeout(res, 2000));
-
-      // Success action (e.g., toast, redirect)
-      alert("Registered successfully!");
+      const res = await dispatch(register(data)).unwrap();
+      if (res) {
+        navigate("/media"); // navigate on success like login page
+      }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Register failed:", error);
+      // Optional: show UI error state here if you want
     } finally {
       setLoading(false);
     }
@@ -46,14 +51,14 @@ const RegisterPage = () => {
       <h1 className="text-3xl font-bold mb-4">Register</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div>
-          <Input type="text" placeholder="Name" {...register("name")} />
+          <Input type="text" placeholder="Name" {...formRegister("name")} />
           {errors.name && (
             <p className="text-red-500 text-sm">{errors.name.message}</p>
           )}
         </div>
 
         <div>
-          <Input type="email" placeholder="Email" {...register("email")} />
+          <Input type="email" placeholder="Email" {...formRegister("email")} />
           {errors.email && (
             <p className="text-red-500 text-sm">{errors.email.message}</p>
           )}
@@ -63,15 +68,18 @@ const RegisterPage = () => {
           <Input
             type="password"
             placeholder="Password"
-            {...register("password")}
+            {...formRegister("password")}
           />
           {errors.password && (
             <p className="text-red-500 text-sm">{errors.password.message}</p>
           )}
         </div>
 
-        <Button type="submit">{loading ? "Registering..." : "Register"}</Button>
+        <Button type="submit" disabled={loading}>
+          {loading ? "Registering..." : "Register"}
+        </Button>
       </form>
+      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
       <p className="mt-4">
         Already have an account?{" "}
         <Link to="/login" className="text-blue-500 hover:underline">
