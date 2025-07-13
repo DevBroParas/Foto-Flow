@@ -37,4 +37,4 @@ COPY .env .env
 EXPOSE 8080
 
 # Start the backend server
-CMD ["node", "dist/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
