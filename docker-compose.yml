@@ -47,7 +47,7 @@ services:
     depends_on:
       - postgres
     volumes:
-      - uploads-data:/app/dist/uploads
+      - uploads-data:/app/uploads
 
   microservice_api:
     build:
