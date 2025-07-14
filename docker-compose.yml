@@ -12,12 +12,14 @@ services:
       - frontend
       - backend
       - microservice_api
+    restart: unless-stopped
 
   redis:
     image: redis:latest
     container_name: redis
     ports:
       - "6379:6379"
+    restart: unless-stopped
 
   postgres:
     image: postgres:15
@@ -28,6 +30,7 @@ services:
       POSTGRES_PASSWORD: PostgressPassword123
     ports:
       - "5433:5432"
+    restart: unless-stopped
 
   frontend:
     build:
@@ -37,6 +40,7 @@ services:
       - backend
     env_file:
       - ./CLIENT/.env
+    restart: unless-stopped
 
   backend:
     build:
@@ -48,6 +52,7 @@ services:
       - postgres
     volumes:
       - uploads-data:/app/uploads
+    restart: unless-stopped
 
   microservice_api:
     build:
@@ -60,6 +65,7 @@ services:
       - ./FACE_RECOGNIZE:/app
     env_file:
       - ./FACE_RECOGNIZE/.env
+    restart: unless-stopped
 
   microservice_celery:
     build:
@@ -73,6 +79,7 @@ services:
       - uploads-data:/server_uploads
     env_file:
       - ./FACE_RECOGNIZE/.env
+    restart: unless-stopped
 
 volumes:
   uploads-data:
