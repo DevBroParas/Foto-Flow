@@ -19,6 +19,8 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
+    volumes:
+      - redis-data:/data
     restart: unless-stopped
 
   postgres:
@@ -30,6 +32,8 @@ services:
       POSTGRES_PASSWORD: PostgressPassword123
     ports:
       - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
 
   frontend:
@@ -83,3 +87,5 @@ services:
 
 volumes:
   uploads-data:
+  postgres-data:
+  redis-data:
