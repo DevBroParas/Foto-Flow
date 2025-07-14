@@ -40,7 +40,7 @@ export const uploadMedia = async (
         data: {
           userId,
           albumId: albumId || null,
-          url: `/uploads/${file.filename}`,
+          url: `api/uploads/${file.filename}`,
           thumbnailUrl: null,
           type: mediaType,
           takenAt: takenAt ? new Date(takenAt) : undefined,
